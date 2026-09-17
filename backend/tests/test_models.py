@@ -87,6 +87,7 @@ async def test_contractor_workforce_relationship(db_session: AsyncSession):
     contractor = Contractor(
         id=uuid.uuid4(),
         company_name="Deccan Mining Contractors",
+        license_number="LIC-DMC-01",
         contract_code="CONT-DMC-01",
     )
     db_session.add(contractor)

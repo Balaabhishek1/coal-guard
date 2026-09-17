@@ -36,7 +36,8 @@ def upgrade() -> None:
         "contractors",
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
         sa.Column("company_name", sa.String(length=255), nullable=False),
-        sa.Column("contract_code", sa.String(length=100), nullable=False),
+        sa.Column("license_number", sa.String(length=100), nullable=False),
+        sa.Column("contract_code", sa.String(length=100), nullable=True),
         sa.Column("contact_person", sa.String(length=255), nullable=True),
         sa.Column("contact_phone", sa.String(length=50), nullable=True),
         sa.Column("contact_email", sa.String(length=255), nullable=True),
@@ -44,7 +45,7 @@ def upgrade() -> None:
         sa.Column("is_active", sa.Boolean(), nullable=False, server_default="true"),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
     )
-    op.create_index("ix_contractors_contract_code", "contractors", ["contract_code"], unique=True)
+    op.create_index("ix_contractors_license_number", "contractors", ["license_number"], unique=True)
 
     # 3. Users Table
     op.create_table(

@@ -4,7 +4,7 @@ Defines JWT login requests, token structures, and decoded claims payload.
 """
 
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.schemas.user import UserRead
 
@@ -12,14 +12,24 @@ from app.schemas.user import UserRead
 class LoginRequest(BaseModel):
     """User credentials for authentication.
 
-    Supports username, email, or RFID tag identifier paired with password.
+    Supports rfid_tag or username paired with password.
     """
 
-    username: str = Field(
-        ...,
-        description="Username, email address, or RFID badge identifier",
+    username: Optional[str] = Field(
+        None,
+        description="Username, email address, or identification handle",
+    )
+    rfid_tag: Optional[str] = Field(
+        None,
+        description="RFID badge or cap-lamp identifier",
     )
     password: str = Field(..., description="Plaintext secret password")
+
+    @model_validator(mode="after")
+    def validate_identifier(self):
+        if not self.username and not self.rfid_tag:
+            raise ValueError("Either 'username' or 'rfid_tag' must be supplied.")
+        return self
 
 
 class Token(BaseModel):
@@ -27,11 +37,11 @@ class Token(BaseModel):
 
     access_token: str
     token_type: str = "bearer"
-    expires_in: int = Field(
-        ...,
+    expires_in: Optional[int] = Field(
+        None,
         description="Token expiration lifespan in seconds",
     )
-    user: UserRead
+    user: Optional[UserRead] = None
 
 
 class TokenPayload(BaseModel):

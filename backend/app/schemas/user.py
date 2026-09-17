@@ -16,7 +16,8 @@ from app.models.user import UserRole
 # ---------------------------------------------------------
 class ContractorBase(BaseModel):
     company_name: str = Field(..., min_length=2, max_length=255)
-    contract_code: str = Field(..., min_length=2, max_length=100)
+    license_number: str = Field(..., min_length=2, max_length=100)
+    contract_code: Optional[str] = Field(None, max_length=100)
     contact_person: Optional[str] = Field(None, max_length=255)
     contact_phone: Optional[str] = Field(None, max_length=50)
     contact_email: Optional[EmailStr] = None
@@ -119,40 +120,39 @@ class UserWithCredentialsRead(UserRead):
 # ---------------------------------------------------------
 # Pithead Edge Gate Worker Eligibility Response Schema
 # ---------------------------------------------------------
-class EligibilityResponse(BaseModel):
+class WorkerEligibilityResponse(BaseModel):
     """Sub-millisecond worker clearance evaluation schema consumed by the Pithead Vision Gate."""
 
     eligible: bool = Field(
         ...,
         description="True if worker passes all statutory checks (Active, VTC, PME, Shift limit)",
     )
-    rfid_tag: str = Field(..., description="Badge or cap-lamp RFID identifier")
-    worker_id: Optional[uuid.UUID] = None
-    full_name: Optional[str] = None
-    role: Optional[str] = None
+    reason: str = Field(
+        default="All statutory credentials valid",
+        description="Statutory explanation or failure reason",
+    )
+    worker_name: str = Field(
+        default="",
+        description="Full name of the worker",
+    )
     vtc_valid: bool = Field(
         ...,
         description="True if Vocational Training Certificate has not expired",
     )
-    vtc_expiry: Optional[date] = None
     pme_valid: bool = Field(
         ...,
         description="True if Periodic Medical Examination clearance has not expired",
     )
+    rfid_tag: Optional[str] = Field(None, description="Badge or cap-lamp RFID identifier")
+    worker_id: Optional[uuid.UUID] = None
+    role: Optional[str] = None
+    vtc_expiry: Optional[date] = None
     pme_expiry: Optional[date] = None
-    shift_limit_valid: bool = Field(
-        ...,
-        description="True if worker has not exceeded maximum statutory continuous shift duration",
-    )
-    shift_hours_elapsed: Optional[float] = Field(
-        None,
-        description="Hours elapsed since current shift start timestamp",
-    )
-    statutory_reasons: List[str] = Field(
-        default_factory=list,
-        description="Detailed list of compliance violations or statutory reasons if access is denied",
-    )
-    timestamp: datetime = Field(
-        default_factory=datetime.utcnow,
-        description="UTC evaluation timestamp",
-    )
+    shift_limit_valid: Optional[bool] = None
+    shift_hours_elapsed: Optional[float] = None
+    statutory_reasons: List[str] = Field(default_factory=list)
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+
+# Alias for backward compatibility
+EligibilityResponse = WorkerEligibilityResponse

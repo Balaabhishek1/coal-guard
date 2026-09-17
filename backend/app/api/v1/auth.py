@@ -50,17 +50,16 @@ async def login(
     payload: LoginRequest,
     db: AsyncSession = Depends(get_db),
 ) -> Token:
-    identifier = payload.username.strip()
+    conditions = []
+    if payload.rfid_tag:
+        conditions.append(User.rfid_tag == payload.rfid_tag.strip())
+    if payload.username:
+        u = payload.username.strip()
+        conditions.extend([User.username == u, User.email == u, User.rfid_tag == u])
 
     stmt = (
         select(User)
-        .where(
-            or_(
-                User.username == identifier,
-                User.email == identifier,
-                User.rfid_tag == identifier,
-            )
-        )
+        .where(or_(*conditions))
         .options(selectinload(User.credentials), selectinload(User.contractor))
     )
     result = await db.execute(stmt)

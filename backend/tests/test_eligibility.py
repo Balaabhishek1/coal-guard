@@ -19,11 +19,10 @@ async def test_eligible_miner_turnstile_clearance(client: AsyncClient, seed_data
 
     data = response.json()
     assert data["eligible"] is True
-    assert data["rfid_tag"] == miner.rfid_tag
+    assert data["reason"] == "All statutory credentials valid"
+    assert data["worker_name"] == miner.full_name
     assert data["vtc_valid"] is True
     assert data["pme_valid"] is True
-    assert data["shift_limit_valid"] is True
-    assert len(data["statutory_reasons"]) == 0
 
 
 @pytest.mark.asyncio
@@ -37,7 +36,7 @@ async def test_expired_vtc_miner_turnstile_denial(client: AsyncClient, seed_data
     data = response.json()
     assert data["eligible"] is False
     assert data["vtc_valid"] is False
-    assert any("VTC" in reason for reason in data["statutory_reasons"])
+    assert "VTC Training Expired" in data["reason"]
 
 
 @pytest.mark.asyncio
@@ -51,7 +50,7 @@ async def test_expired_pme_miner_turnstile_denial(client: AsyncClient, seed_data
     data = response.json()
     assert data["eligible"] is False
     assert data["pme_valid"] is False
-    assert any("PME" in reason for reason in data["statutory_reasons"])
+    assert "PME Invalid" in data["reason"]
 
 
 @pytest.mark.asyncio
@@ -67,7 +66,7 @@ async def test_overtime_miner_turnstile_denial(client: AsyncClient, seed_data):
     assert data["shift_limit_valid"] is False
     assert data["shift_hours_elapsed"] is not None
     assert data["shift_hours_elapsed"] >= 8.0
-    assert any("shift duration" in reason.lower() for reason in data["statutory_reasons"])
+    assert "shift duration" in data["reason"].lower()
 
 
 @pytest.mark.asyncio
@@ -80,18 +79,15 @@ async def test_inactive_miner_turnstile_denial(client: AsyncClient, seed_data):
 
     data = response.json()
     assert data["eligible"] is False
-    assert any("inactive or suspended" in reason for reason in data["statutory_reasons"])
+    assert "inactive" in data["reason"].lower()
 
 
 @pytest.mark.asyncio
 async def test_unknown_rfid_turnstile_denial(client: AsyncClient, seed_data):
-    """Unregistered or counterfeit RFID tags must be rejected."""
+    """Unregistered or counterfeit RFID tags must return 404 Not Found."""
     response = await client.get("/api/v1/auth/workers/UNKNOWN-RFID-9999/eligibility")
-    assert response.status_code == 200
-
-    data = response.json()
-    assert data["eligible"] is False
-    assert any("not recognized" in reason for reason in data["statutory_reasons"])
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
 
 
 @pytest.mark.asyncio

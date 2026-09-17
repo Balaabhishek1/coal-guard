@@ -29,10 +29,11 @@ class UserRole(str, Enum):
 
     MINER = "MINER"
     OVERMAN = "OVERMAN"
+    MANAGER = "MANAGER"
+    COLLIERY_MANAGER = "COLLIERY_MANAGER"
     MINING_SIRDAR = "MINING_SIRDAR"
     SAFETY_OFFICER = "SAFETY_OFFICER"
     GATE_OPERATOR = "GATE_OPERATOR"
-    COLLIERY_MANAGER = "COLLIERY_MANAGER"
     CORPORATE_HQ = "CORPORATE_HQ"
     DGMS_INSPECTOR = "DGMS_INSPECTOR"
     CONTRACTOR_SUPERVISOR = "CONTRACTOR_SUPERVISOR"
@@ -49,11 +50,15 @@ class Contractor(Base):
         default=uuid.uuid4,
     )
     company_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    contract_code: Mapped[str] = mapped_column(
+    license_number: Mapped[str] = mapped_column(
         String(100),
         unique=True,
         index=True,
         nullable=False,
+    )
+    contract_code: Mapped[Optional[str]] = mapped_column(
+        String(100),
+        nullable=True,
     )
     contact_person: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     contact_phone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
@@ -82,6 +87,7 @@ class User(Base):
         UUID(as_uuid=True),
         primary_key=True,
         default=uuid.uuid4,
+        server_default=func.gen_random_uuid(),
     )
     rfid_tag: Mapped[Optional[str]] = mapped_column(
         String(128),

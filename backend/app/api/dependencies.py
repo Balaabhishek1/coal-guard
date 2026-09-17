@@ -82,13 +82,30 @@ async def get_current_active_user(
     return current_user
 
 
-def require_role(*allowed_roles: Union[UserRole, str]) -> Callable:
+def require_role(
+    allowed_roles: Union[List[str], str, Sequence[Union[UserRole, str]], UserRole, None] = None,
+    *extra_roles: Union[UserRole, str],
+) -> Callable:
     """Dependency factory enforcing statutory Role-Based Access Control (RBAC).
 
-    Raises 403 Forbidden if the user's role is not within the permitted authorization set.
+    Accepts list[str], keyword argument, or positional args, and raises 403 Forbidden if the user's
+    role is not within the permitted authorization set.
     """
+    all_inputs: List[Union[UserRole, str]] = []
+    if allowed_roles is not None:
+        if isinstance(allowed_roles, (list, tuple, set)):
+            all_inputs.extend(allowed_roles)
+        else:
+            all_inputs.append(allowed_roles)
+    if extra_roles:
+        for item in extra_roles:
+            if isinstance(item, (list, tuple, set)):
+                all_inputs.extend(item)
+            else:
+                all_inputs.append(item)
+
     normalized_roles: List[str] = [
-        r.value if isinstance(r, UserRole) else str(r).upper() for r in allowed_roles
+        r.value if isinstance(r, UserRole) else str(r).upper() for r in all_inputs
     ]
 
     async def role_checker(

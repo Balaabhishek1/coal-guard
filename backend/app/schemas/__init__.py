@@ -13,6 +13,7 @@ from app.schemas.user import (
     WorkerCredentialCreate,
     WorkerCredentialRead,
     WorkerCredentialUpdate,
+    WorkerEligibilityResponse,
 )
 
 __all__ = [
@@ -29,5 +30,6 @@ __all__ = [
     "WorkerCredentialCreate",
     "WorkerCredentialRead",
     "WorkerCredentialUpdate",
+    "WorkerEligibilityResponse",
     "EligibilityResponse",
 ]

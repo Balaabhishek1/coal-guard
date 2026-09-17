@@ -78,6 +78,7 @@ async def seed_data(db_session: AsyncSession):
     contractor = Contractor(
         id=uuid.uuid4(),
         company_name="Singareni Mining Services Ltd",
+        license_number="LIC-SCCL-2026",
         contract_code="CONT-SCCL-2026",
         contact_person="Ramesh Babu",
         contact_phone="+919876543210",

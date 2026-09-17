@@ -42,61 +42,42 @@ class EligibilityService:
         worker = result.scalar_one_or_none()
 
         if not worker:
-            return EligibilityResponse(
-                eligible=False,
-                rfid_tag=rfid_tag,
-                worker_id=None,
-                full_name=None,
-                role=None,
-                vtc_valid=False,
-                vtc_expiry=None,
-                pme_valid=False,
-                pme_expiry=None,
-                shift_limit_valid=False,
-                shift_hours_elapsed=None,
-                statutory_reasons=["RFID tag not recognized in colliery registry"],
-                timestamp=now,
+            from fastapi import HTTPException, status
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Worker with RFID tag '{rfid_tag}' not found in colliery registry",
             )
 
         statutory_reasons: List[str] = []
         is_active = worker.is_active
 
         if not is_active:
-            statutory_reasons.append("Worker profile is marked inactive or suspended")
+            statutory_reasons.append("Worker is inactive")
 
         creds: Optional[WorkerCredential] = worker.credentials
         if not creds:
             return EligibilityResponse(
                 eligible=False,
+                reason="No statutory credentials registered",
+                worker_name=worker.full_name,
+                vtc_valid=False,
+                pme_valid=False,
                 rfid_tag=rfid_tag,
                 worker_id=worker.id,
-                full_name=worker.full_name,
                 role=worker.role,
-                vtc_valid=False,
-                vtc_expiry=None,
-                pme_valid=False,
-                pme_expiry=None,
-                shift_limit_valid=False,
-                shift_hours_elapsed=None,
-                statutory_reasons=[
-                    "No statutory training or medical credentials registered"
-                ],
+                statutory_reasons=["No statutory credentials registered"],
                 timestamp=now,
             )
 
         # 1. Vocational Training Centre (VTC) Expiration Verification
         vtc_valid = creds.vtc_training_expiry >= today
         if not vtc_valid:
-            statutory_reasons.append(
-                f"Statutory VTC refresher training expired on {creds.vtc_training_expiry.isoformat()}"
-            )
+            statutory_reasons.append("VTC Training Expired")
 
         # 2. Periodic Medical Examination (PME) Expiration Verification
         pme_valid = creds.pme_medical_expiry >= today
         if not pme_valid:
-            statutory_reasons.append(
-                f"Statutory PME medical fitness certification expired on {creds.pme_medical_expiry.isoformat()}"
-            )
+            statutory_reasons.append("PME Invalid")
 
         # 3. Continuous Shift Overtime Duration Check (Mines Act 1952 / CMR 2017)
         shift_limit_valid = True
@@ -113,8 +94,7 @@ class EligibilityService:
             if shift_hours_elapsed >= settings.MAX_CONTINUOUS_SHIFT_HOURS:
                 shift_limit_valid = False
                 statutory_reasons.append(
-                    f"Maximum shift duration exceeded: {shift_hours_elapsed} hours active "
-                    f"(statutory ceiling is {settings.MAX_CONTINUOUS_SHIFT_HOURS} hours)"
+                    f"Maximum shift duration exceeded ({shift_hours_elapsed}h elapsed)"
                 )
 
         # Overall clearance determination
@@ -126,15 +106,22 @@ class EligibilityService:
             and len(statutory_reasons) == 0
         )
 
+        reason = (
+            "All statutory credentials valid"
+            if is_eligible
+            else "; ".join(statutory_reasons)
+        )
+
         return EligibilityResponse(
             eligible=is_eligible,
+            reason=reason,
+            worker_name=worker.full_name,
+            vtc_valid=vtc_valid,
+            pme_valid=pme_valid,
             rfid_tag=rfid_tag,
             worker_id=worker.id,
-            full_name=worker.full_name,
             role=worker.role,
-            vtc_valid=vtc_valid,
             vtc_expiry=creds.vtc_training_expiry,
-            pme_valid=pme_valid,
             pme_expiry=creds.pme_medical_expiry,
             shift_limit_valid=shift_limit_valid,
             shift_hours_elapsed=shift_hours_elapsed,

@@ -40,7 +40,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title=settings.PROJECT_NAME,
+    title="AI MineGuard Core Engine",
     version=settings.VERSION,
     description=(
         "AI MineGuard: Industrial Coal Mining Governance, Statutory Safety Compliance, "
