@@ -40,6 +40,12 @@ from app.schemas.governance import (
     ViolationResponse,
     ViolationStatusTransition,
 )
+from app.schemas.vision_edge import (
+    AccessAttemptResponse,
+    EdgeAccessEventPayload,
+    WearStateDetails,
+    WSEventMessage,
+)
 
 __all__ = [
     "LoginRequest",
@@ -77,6 +83,10 @@ __all__ = [
     "AuditIntegrityResponse",
     "SeverityEnum",
     "StatusEnum",
+    "WearStateDetails",
+    "EdgeAccessEventPayload",
+    "AccessAttemptResponse",
+    "WSEventMessage",
 ]
 
 

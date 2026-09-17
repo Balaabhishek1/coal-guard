@@ -72,7 +72,10 @@ async def close_redis_pool() -> None:
     global _redis_client, _redis_pool
     if _redis_client is not None:
         try:
-            await _redis_client.close()
+            if hasattr(_redis_client, "aclose"):
+                await _redis_client.aclose()
+            else:
+                await _redis_client.close()
         except Exception as exc:
             logger.debug(f"Error closing Redis client: {exc}")
         _redis_client = None

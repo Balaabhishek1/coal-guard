@@ -1,5 +1,6 @@
 """Models package initialization."""
 
+from app.models.access_log import AccessAttemptLog
 from app.models.governance import (
     AuditLedger,
     ComplianceViolation,
@@ -17,6 +18,7 @@ from app.models.telemetry import (
 from app.models.user import Contractor, User, UserRole, WorkerCredential
 
 __all__ = [
+    "AccessAttemptLog",
     "Contractor",
     "User",
     "UserRole",

@@ -15,6 +15,7 @@ from sqlalchemy import text
 from app.api.v1 import api_router
 from app.core.config import settings
 from app.core.redis import close_redis_pool, get_redis_client, init_redis_pool
+from app.core.ws_manager import ws_manager
 from app.db.session import engine, init_spatial_extensions
 
 # Configure application logging
@@ -37,15 +38,17 @@ async def lifespan(app: FastAPI):
 
     try:
         await init_redis_pool()
+        ws_manager.start_redis_listener()
     except Exception as exc:
         logger.warning(f"Startup Redis initialization warning: {exc}")
 
     yield
 
     logger.info(f"Shutting down {settings.PROJECT_NAME} engine...")
+    await ws_manager.stop_redis_listener()
     await close_redis_pool()
     await engine.dispose()
-    logger.info("Database connection pool and Redis clients disposed cleanly.")
+    logger.info("Database connection pool, Redis clients, and WebSocket workers disposed cleanly.")
 
 
 app = FastAPI(
