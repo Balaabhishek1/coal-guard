@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     SLA_HIGH_HOURS: int = 12
     SLA_CRITICAL_HOURS: int = 2
 
+    # Resumable Media & Evidence Upload Directory
+    UPLOAD_DIR: str = "uploads/evidence"
+
 
 settings = Settings()
 

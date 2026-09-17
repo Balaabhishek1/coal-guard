@@ -40,6 +40,15 @@ from app.schemas.governance import (
     ViolationResponse,
     ViolationStatusTransition,
 )
+from app.schemas.sync import (
+    ChunkUploadInit,
+    ChunkUploadInitResponse,
+    ChunkUploadProgressResponse,
+    FormIVChecklistEntry,
+    FormIVInspectionRead,
+    SyncBatchPayload,
+    SyncBatchResponse,
+)
 from app.schemas.vision_edge import (
     AccessAttemptResponse,
     EdgeAccessEventPayload,
@@ -87,6 +96,13 @@ __all__ = [
     "EdgeAccessEventPayload",
     "AccessAttemptResponse",
     "WSEventMessage",
+    "FormIVChecklistEntry",
+    "SyncBatchPayload",
+    "SyncBatchResponse",
+    "ChunkUploadInit",
+    "ChunkUploadInitResponse",
+    "ChunkUploadProgressResponse",
+    "FormIVInspectionRead",
 ]
 
 

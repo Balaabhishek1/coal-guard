@@ -8,6 +8,7 @@ from app.models.governance import (
     ViolationStatus,
 )
 from app.models.location import LocationType, MineLocation
+from app.models.sync_log import FormIVInspection, InspectionEvidence, SyncLog, SyncStatus
 from app.models.telemetry import (
     CommunicationProtocol,
     DeviceType,
@@ -19,6 +20,10 @@ from app.models.user import Contractor, User, UserRole, WorkerCredential
 
 __all__ = [
     "AccessAttemptLog",
+    "SyncLog",
+    "FormIVInspection",
+    "InspectionEvidence",
+    "SyncStatus",
     "Contractor",
     "User",
     "UserRole",
