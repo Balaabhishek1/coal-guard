@@ -49,5 +49,16 @@ class Settings(BaseSettings):
     # Statutory Governance & Shift Limits (CMR 2017 / Mines Act 1952)
     MAX_CONTINUOUS_SHIFT_HOURS: float = 8.0
 
+    # Celery Task Queue & Asynchronous Workers
+    CELERY_BROKER_URL: str = "redis://localhost:6379/1"
+    CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
+
+    # Statutory SLA Remediation Clocks (Hours)
+    SLA_LOW_HOURS: int = 72
+    SLA_MEDIUM_HOURS: int = 24
+    SLA_HIGH_HOURS: int = 12
+    SLA_CRITICAL_HOURS: int = 2
+
 
 settings = Settings()
+

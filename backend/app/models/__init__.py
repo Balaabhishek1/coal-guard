@@ -1,5 +1,11 @@
 """Models package initialization."""
 
+from app.models.governance import (
+    AuditLedger,
+    ComplianceViolation,
+    ViolationSeverity,
+    ViolationStatus,
+)
 from app.models.location import LocationType, MineLocation
 from app.models.telemetry import (
     CommunicationProtocol,
@@ -22,5 +28,10 @@ __all__ = [
     "MetricType",
     "HardwareRegistry",
     "SensorTelemetry",
+    "ComplianceViolation",
+    "AuditLedger",
+    "ViolationSeverity",
+    "ViolationStatus",
 ]
+
 

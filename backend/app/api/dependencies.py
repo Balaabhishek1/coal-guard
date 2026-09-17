@@ -3,7 +3,7 @@
 Provides JWT extraction, current user authentication, and granular RBAC role guards.
 """
 
-from typing import AsyncGenerator, Callable, List, Sequence, Union
+from typing import AsyncGenerator, Callable, List, Optional, Sequence, Union
 import uuid
 
 from fastapi import Depends, HTTPException, status
@@ -68,6 +68,20 @@ async def get_current_user(
         raise credentials_exception
 
     return user
+
+
+async def get_optional_current_user(
+    token: Optional[str] = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> Optional[User]:
+    """Extracts authenticated user if Bearer token present, or returns None for automated edge/system events."""
+    if not token:
+        return None
+    try:
+        return await get_current_user(token=token, db=db)
+    except HTTPException:
+        return None
+
 
 
 async def get_current_active_user(

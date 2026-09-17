@@ -31,6 +31,16 @@ from app.schemas.user import (
     WorkerEligibilityResponse,
 )
 
+from app.schemas.governance import (
+    AuditIntegrityResponse,
+    AuditLedgerRead,
+    SeverityEnum,
+    StatusEnum,
+    ViolationCreate,
+    ViolationResponse,
+    ViolationStatusTransition,
+)
+
 __all__ = [
     "LoginRequest",
     "Token",
@@ -60,5 +70,13 @@ __all__ = [
     "ProtocolEnum",
     "MetricTypeEnum",
     "DeviceStatusEnum",
+    "ViolationCreate",
+    "ViolationStatusTransition",
+    "ViolationResponse",
+    "AuditLedgerRead",
+    "AuditIntegrityResponse",
+    "SeverityEnum",
+    "StatusEnum",
 ]
+
 
