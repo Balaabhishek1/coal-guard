@@ -1,6 +1,7 @@
 """Models package initialization."""
 
 from app.models.access_log import AccessAttemptLog
+from app.models.document import DigitizedCertificate, DocumentType, ProcessingStatus
 from app.models.governance import (
     AuditLedger,
     ComplianceViolation,
@@ -39,6 +40,9 @@ __all__ = [
     "AuditLedger",
     "ViolationSeverity",
     "ViolationStatus",
+    "DigitizedCertificate",
+    "DocumentType",
+    "ProcessingStatus",
 ]
 
 

@@ -12,7 +12,7 @@ celery_app = Celery(
     "coalguard_worker",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
-    include=["app.worker.sla_worker"],
+    include=["app.worker.sla_worker", "app.worker.ocr_worker"],
 )
 
 celery_app.conf.update(

@@ -31,6 +31,12 @@ from app.schemas.user import (
     WorkerEligibilityResponse,
 )
 
+from app.schemas.document import (
+    DocumentUploadResponse,
+    DocumentVerifyRequest,
+    OCRResultResponse,
+    ReportGenerateRequest,
+)
 from app.schemas.governance import (
     AuditIntegrityResponse,
     AuditLedgerRead,
@@ -103,6 +109,10 @@ __all__ = [
     "ChunkUploadInitResponse",
     "ChunkUploadProgressResponse",
     "FormIVInspectionRead",
+    "DocumentUploadResponse",
+    "OCRResultResponse",
+    "DocumentVerifyRequest",
+    "ReportGenerateRequest",
 ]
 
 
