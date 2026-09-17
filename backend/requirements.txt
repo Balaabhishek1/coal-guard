@@ -1,0 +1,25 @@
+# Core Framework & Server
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+pydantic[email]>=2.8.0
+pydantic-settings>=2.4.0
+email-validator>=2.0.0
+
+# Database & Spatial Engine
+sqlalchemy>=2.0.30
+asyncpg>=0.29.0
+geoalchemy2>=0.15.0
+shapely>=2.0.0
+alembic>=1.13.0
+
+# Security & Identity
+passlib[bcrypt]>=1.7.4
+bcrypt>=4.1.0
+python-jose[cryptography]>=3.3.0
+python-multipart>=0.0.9
+
+# Testing & Utilities
+httpx>=0.27.0
+pytest>=8.2.0
+pytest-asyncio>=0.23.0
+aiosqlite>=0.20.0
