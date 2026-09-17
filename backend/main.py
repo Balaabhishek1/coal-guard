@@ -14,6 +14,7 @@ from sqlalchemy import text
 
 from app.api.v1 import api_router
 from app.core.config import settings
+from app.core.redis import close_redis_pool, get_redis_client, init_redis_pool
 from app.db.session import engine, init_spatial_extensions
 
 # Configure application logging
@@ -26,17 +27,25 @@ logger = logging.getLogger("coalguard.main")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifecycle manager: verifies database connectivity and spatial extensions."""
+    """Application lifecycle manager: verifies database connectivity, spatial extensions, and Redis pool."""
     logger.info(f"Booting {settings.PROJECT_NAME} v{settings.VERSION} [{settings.ENVIRONMENT}]...")
     try:
         await init_spatial_extensions()
         logger.info("Database connectivity and spatial extensions verified successfully.")
     except Exception as exc:
         logger.error(f"Startup database initialization error: {exc}")
+
+    try:
+        await init_redis_pool()
+    except Exception as exc:
+        logger.warning(f"Startup Redis initialization warning: {exc}")
+
     yield
+
     logger.info(f"Shutting down {settings.PROJECT_NAME} engine...")
+    await close_redis_pool()
     await engine.dispose()
-    logger.info("Database connection pool disposed cleanly.")
+    logger.info("Database connection pool and Redis clients disposed cleanly.")
 
 
 app = FastAPI(
@@ -72,7 +81,7 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
     status_code=status.HTTP_200_OK,
 )
 async def health_check():
-    """Comprehensive readiness probe verifying API status and database responsiveness."""
+    """Comprehensive readiness probe verifying API status, database, and Redis responsiveness."""
     db_status = "HEALTHY"
     try:
         async with engine.connect() as conn:
@@ -80,11 +89,23 @@ async def health_check():
     except Exception as exc:
         db_status = f"UNHEALTHY: {str(exc)}"
 
+    redis_status = "HEALTHY"
+    try:
+        client = get_redis_client()
+        await client.ping()
+    except Exception as exc:
+        redis_status = f"OFFLINE: {str(exc)}"
+
+    overall_status = "ONLINE"
+    if "UNHEALTHY" in db_status:
+        overall_status = "DEGRADED"
+
     return {
         "system": settings.PROJECT_NAME,
         "version": settings.VERSION,
-        "status": "ONLINE" if "UNHEALTHY" not in db_status else "DEGRADED",
+        "status": overall_status,
         "database": db_status,
+        "redis": redis_status,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "environment": settings.ENVIRONMENT,
     }

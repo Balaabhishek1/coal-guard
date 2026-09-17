@@ -1,6 +1,21 @@
 """Schemas package initialization."""
 
 from app.schemas.auth import LoginRequest, Token, TokenPayload
+from app.schemas.telemetry import (
+    DeviceStatusEnum,
+    DeviceTypeEnum,
+    GasIngestPayload,
+    GasIngestResponse,
+    GasReading,
+    HardwareHeartbeat,
+    HardwareRegister,
+    HardwareResponse,
+    HardwareStatusMatrix,
+    HeartbeatResponse,
+    MetricTypeEnum,
+    ProtocolEnum,
+    StatutoryAlert,
+)
 from app.schemas.user import (
     ContractorCreate,
     ContractorRead,
@@ -32,4 +47,18 @@ __all__ = [
     "WorkerCredentialUpdate",
     "WorkerEligibilityResponse",
     "EligibilityResponse",
+    "HardwareRegister",
+    "HardwareResponse",
+    "HardwareHeartbeat",
+    "HeartbeatResponse",
+    "HardwareStatusMatrix",
+    "GasReading",
+    "GasIngestPayload",
+    "GasIngestResponse",
+    "StatutoryAlert",
+    "DeviceTypeEnum",
+    "ProtocolEnum",
+    "MetricTypeEnum",
+    "DeviceStatusEnum",
 ]
+
