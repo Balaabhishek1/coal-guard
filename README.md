@@ -1,6 +1,7 @@
 # Mind the Mine (SIH26024)
 
-Team members:
+**Team members:**
+
 S Bala Abhishek (TL)
 
 T Hema Chandra Koteswar
