@@ -19,6 +19,7 @@ import {
   Map,
   Network,
   RefreshCw,
+  ScanLine,
   ServerCrash,
   ShieldCheck,
   Ticket,
@@ -119,9 +120,23 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     name: "DGMS Statutory Reports",
-    path: "/statutory-reports",
+    path: "/reports",
     icon: FileText,
     allowedRoles: ["COLLIERY_MANAGER", "MANAGER", "DGMS_INSPECTOR", "ADMIN"],
+    badgeText: "PDF",
+  },
+  {
+    name: "OCR Digitization Studio",
+    path: "/documents/ocr",
+    icon: ScanLine,
+    allowedRoles: [
+      "COLLIERY_MANAGER",
+      "MANAGER",
+      "OVERMAN",
+      "SAFETY_OFFICER",
+      "ADMIN",
+    ],
+    badgeText: "AI OCR",
   },
 
   // Field Inspector & Overman
@@ -187,9 +202,10 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     name: "Statutory Audit Center",
-    path: "/audit-exporter",
+    path: "/reports",
     icon: FileDown,
     allowedRoles: ["CORPORATE_HQ", "DGMS_INSPECTOR", "ADMIN"],
+    badgeText: "EXPORT",
   },
 
   // Contractor Supervisor

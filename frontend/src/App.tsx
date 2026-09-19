@@ -15,6 +15,8 @@ import RemediationPage from "@/features/governance/pages/remediation-page";
 import AuditLedgerPage from "@/features/governance/pages/audit-ledger-page";
 import SyncDashboardPage from "@/features/field-ops/pages/sync-dashboard-page";
 import FormIVExplorerPage from "@/features/field-ops/pages/form-iv-explorer-page";
+import OcrStudioPage from "@/features/documents/pages/ocr-studio-page";
+import ReportsDashboardPage from "@/features/reports/pages/reports-dashboard-page";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -231,14 +233,35 @@ export const App: React.FC = () => {
                 />
                 <Route
                   path="/statutory-reports"
-                  element={
-                    <WorkspacePlaceholder
-                      title="DGMS Statutory Reports & Exporter"
-                      subtitle="CMR 2017 Form IV, Form B, and Digitally Signed Safety Scorecards"
-                      phaseText="PHASE 6 EXPORT ENGINE"
-                      statutoryRole="COLLIERY_MANAGER / DGMS_INSPECTOR"
-                    />
-                  }
+                  element={<ReportsDashboardPage />}
+                />
+                <Route
+                  path="/reports"
+                  element={<ReportsDashboardPage />}
+                />
+              </Route>
+
+              {/* Multimodal OCR Digitization Studio */}
+              <Route
+                element={
+                  <ProtectedRoute
+                    allowedRoles={[
+                      "COLLIERY_MANAGER",
+                      "MANAGER",
+                      "OVERMAN",
+                      "SAFETY_OFFICER",
+                      "ADMIN",
+                    ]}
+                  />
+                }
+              >
+                <Route
+                  path="/documents/ocr"
+                  element={<OcrStudioPage />}
+                />
+                <Route
+                  path="/ocr-studio"
+                  element={<OcrStudioPage />}
                 />
               </Route>
 
@@ -368,14 +391,7 @@ export const App: React.FC = () => {
                 />
                 <Route
                   path="/audit-exporter"
-                  element={
-                    <WorkspacePlaceholder
-                      title="Statutory Audit Center"
-                      subtitle="Cryptographic Audit Certificates & Signed PDF Manifests"
-                      phaseText="PHASE 6 EXPORT STUDIO"
-                      statutoryRole="CORPORATE_HQ / DGMS_INSPECTOR"
-                    />
-                  }
+                  element={<ReportsDashboardPage />}
                 />
               </Route>
 

@@ -132,6 +132,12 @@ async def get_document(
     summary="Human-in-the-Loop Statutory Verification",
     description="Statutory overman or safety officer confirms or corrects OCR metadata, auto-updating credential registries.",
 )
+@router.patch(
+    "/{certificate_id}/verify",
+    response_model=OCRResultResponse,
+    summary="Human-in-the-Loop Statutory Verification (PATCH)",
+    description="Statutory overman or safety officer confirms or corrects OCR metadata, auto-updating credential registries.",
+)
 async def verify_document(
     certificate_id: uuid.UUID,
     payload: DocumentVerifyRequest,
