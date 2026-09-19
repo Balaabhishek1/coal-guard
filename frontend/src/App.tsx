@@ -10,6 +10,7 @@ import UnauthorizedPage from "@/pages/unauthorized-page";
 import WorkspacePlaceholder from "@/pages/workspace-placeholder";
 import HardwareMatrixPage from "@/features/hardware/pages/hardware-matrix-page";
 import TelemetryDashboardPage from "@/features/telemetry/pages/telemetry-dashboard-page";
+import GateHudPage from "@/features/cctv-gate/pages/gate-hud-page";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -66,21 +67,18 @@ export const App: React.FC = () => {
               <Route
                 element={
                   <ProtectedRoute
-                    allowedRoles={["SAFETY_OFFICER", "GATE_OPERATOR", "ADMIN"]}
+                    allowedRoles={[
+                      "SAFETY_OFFICER",
+                      "GATE_OPERATOR",
+                      "COLLIERY_MANAGER",
+                      "MANAGER",
+                      "OVERMAN",
+                      "ADMIN",
+                    ]}
                   />
                 }
               >
-                <Route
-                  path="/gate-hud"
-                  element={
-                    <WorkspacePlaceholder
-                      title="Pithead Checkpoint HUD"
-                      subtitle="Live WebRTC Video Stream, Canvas Overlays & Hardware Turnstile Interlock"
-                      phaseText="PHASE 3 ACTIVE COMPONENT"
-                      statutoryRole="SAFETY_OFFICER / GATE_OPERATOR"
-                    />
-                  }
-                />
+                <Route path="/gate-hud" element={<GateHudPage />} />
                 <Route
                   path="/incident-log"
                   element={

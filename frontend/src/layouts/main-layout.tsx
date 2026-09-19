@@ -43,7 +43,14 @@ const NAV_ITEMS: NavItem[] = [
     name: "Pithead Gate HUD",
     path: "/gate-hud",
     icon: ShieldCheck,
-    allowedRoles: ["SAFETY_OFFICER", "GATE_OPERATOR", "ADMIN"],
+    allowedRoles: [
+      "SAFETY_OFFICER",
+      "GATE_OPERATOR",
+      "COLLIERY_MANAGER",
+      "MANAGER",
+      "OVERMAN",
+      "ADMIN",
+    ],
     badgeText: "LIVE",
   },
   {
