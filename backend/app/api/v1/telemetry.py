@@ -3,7 +3,7 @@
 High-throughput multi-reading sensor ingestion with statutory safety interlocks.
 """
 
-from typing import List
+from typing import List, Optional
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -72,3 +72,60 @@ async def get_latest_device_telemetry(
             for r in records
         ],
     }
+
+
+@router.get(
+    "/gas/history",
+    summary="Retrieve Historical Environmental Gas Telemetry Points",
+    description="Fetches aggregated time-series readings for continuous chart visualization.",
+)
+async def get_gas_history(
+    metric_type: str = "CH4_PERCENT",
+    time_range: str = "24h",
+    hardware_id: Optional[uuid.UUID] = None,
+    db: AsyncSession = Depends(get_db),
+):
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime.now(timezone.utc)
+    delta = timedelta(hours=24)
+    if time_range == "1h":
+        delta = timedelta(hours=1)
+    elif time_range == "6h":
+        delta = timedelta(hours=6)
+    elif time_range == "7d":
+        delta = timedelta(days=7)
+
+    since = now - delta
+
+    conditions = [
+        SensorTelemetry.time >= since,
+        SensorTelemetry.metric_type == metric_type,
+    ]
+    if hardware_id:
+        conditions.append(SensorTelemetry.hardware_id == hardware_id)
+
+    stmt = (
+        select(SensorTelemetry)
+        .where(*conditions)
+        .order_by(SensorTelemetry.time.asc())
+        .limit(200)
+    )
+    res = await db.execute(stmt)
+    records = res.scalars().all()
+
+    points = [
+        {
+            "bucket": r.time.isoformat(),
+            "avg_reading": r.reading_value,
+            "peak_reading": r.reading_value,
+        }
+        for r in records
+    ]
+
+    return {
+        "metric_type": metric_type,
+        "time_range": time_range,
+        "points": points,
+    }
+

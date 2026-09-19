@@ -8,6 +8,8 @@ import LoginPage from "@/features/auth/pages/login-page";
 import DashboardPage from "@/pages/dashboard-page";
 import UnauthorizedPage from "@/pages/unauthorized-page";
 import WorkspacePlaceholder from "@/pages/workspace-placeholder";
+import HardwareMatrixPage from "@/features/hardware/pages/hardware-matrix-page";
+import TelemetryDashboardPage from "@/features/telemetry/pages/telemetry-dashboard-page";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -105,17 +107,8 @@ export const App: React.FC = () => {
                   />
                 }
               >
-                <Route
-                  path="/hardware-matrix"
-                  element={
-                    <WorkspacePlaceholder
-                      title="Diagnostic & Hardware Matrix"
-                      subtitle="Modbus TCP, CCTV, and Gas ETD Sensor Health Grid"
-                      phaseText="PHASE 2 ACTIVE COMPONENT"
-                      statutoryRole="SAFETY_OFFICER / COLLIERY_MANAGER"
-                    />
-                  }
-                />
+                <Route path="/hardware-matrix" element={<HardwareMatrixPage />} />
+                <Route path="/diagnostics" element={<HardwareMatrixPage />} />
                 <Route
                   path="/muster-roll"
                   element={
@@ -170,16 +163,30 @@ export const App: React.FC = () => {
                     />
                   }
                 />
+              </Route>
+
+              {/* Atmospheric Gas Telemetry & Environmental HUD (Safety Officers, Managers, Regulators, Overmen) */}
+              <Route
+                element={
+                  <ProtectedRoute
+                    allowedRoles={[
+                      "SAFETY_OFFICER",
+                      "COLLIERY_MANAGER",
+                      "MANAGER",
+                      "DGMS_INSPECTOR",
+                      "OVERMAN",
+                      "ADMIN",
+                    ]}
+                  />
+                }
+              >
                 <Route
                   path="/environmental-trends"
-                  element={
-                    <WorkspacePlaceholder
-                      title="Atmospheric Telemetry Visualizer"
-                      subtitle="Real-time & Historical CH4, CO, and Airflow Dynamics"
-                      phaseText="PHASE 2 TELEMETRY ENGINE"
-                      statutoryRole="COLLIERY_MANAGER"
-                    />
-                  }
+                  element={<TelemetryDashboardPage />}
+                />
+                <Route
+                  path="/telemetry"
+                  element={<TelemetryDashboardPage />}
                 />
               </Route>
 

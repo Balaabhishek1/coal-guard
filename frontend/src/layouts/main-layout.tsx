@@ -94,7 +94,14 @@ const NAV_ITEMS: NavItem[] = [
     name: "Atmospheric Telemetry",
     path: "/environmental-trends",
     icon: Activity,
-    allowedRoles: ["COLLIERY_MANAGER", "MANAGER", "ADMIN"],
+    allowedRoles: [
+      "SAFETY_OFFICER",
+      "COLLIERY_MANAGER",
+      "MANAGER",
+      "DGMS_INSPECTOR",
+      "OVERMAN",
+      "ADMIN",
+    ],
   },
   {
     name: "DGMS Statutory Reports",
