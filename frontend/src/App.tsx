@@ -13,6 +13,8 @@ import TelemetryDashboardPage from "@/features/telemetry/pages/telemetry-dashboa
 import GateHudPage from "@/features/cctv-gate/pages/gate-hud-page";
 import RemediationPage from "@/features/governance/pages/remediation-page";
 import AuditLedgerPage from "@/features/governance/pages/audit-ledger-page";
+import SyncDashboardPage from "@/features/field-ops/pages/sync-dashboard-page";
+import FormIVExplorerPage from "@/features/field-ops/pages/form-iv-explorer-page";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -240,6 +242,55 @@ export const App: React.FC = () => {
                 />
               </Route>
 
+              {/* Field Operations: Mobile Sync Dashboard */}
+              <Route
+                element={
+                  <ProtectedRoute
+                    allowedRoles={[
+                      "OVERMAN",
+                      "MINING_SIRDAR",
+                      "COLLIERY_MANAGER",
+                      "MANAGER",
+                      "ADMIN",
+                    ]}
+                  />
+                }
+              >
+                <Route
+                  path="/field-ops/sync-logs"
+                  element={<SyncDashboardPage />}
+                />
+                <Route
+                  path="/field-queue"
+                  element={<SyncDashboardPage />}
+                />
+              </Route>
+
+              {/* Field Operations: CMR 2017 Form IV Inspection Explorer */}
+              <Route
+                element={
+                  <ProtectedRoute
+                    allowedRoles={[
+                      "OVERMAN",
+                      "MINING_SIRDAR",
+                      "COLLIERY_MANAGER",
+                      "MANAGER",
+                      "DGMS_INSPECTOR",
+                      "ADMIN",
+                    ]}
+                  />
+                }
+              >
+                <Route
+                  path="/field-ops/form-iv"
+                  element={<FormIVExplorerPage />}
+                />
+                <Route
+                  path="/shift-diary"
+                  element={<FormIVExplorerPage />}
+                />
+              </Route>
+
               {/* Field Inspector & Overman Workspace */}
               <Route
                 element={
@@ -249,33 +300,11 @@ export const App: React.FC = () => {
                 }
               >
                 <Route
-                  path="/field-queue"
-                  element={
-                    <WorkspacePlaceholder
-                      title="Mobile Offline Sync Queue"
-                      subtitle="Underground Inspection Log Ingestion & Conflict Resolution"
-                      phaseText="PHASE 5 MOBILE ENGINE"
-                      statutoryRole="OVERMAN / MINING_SIRDAR"
-                    />
-                  }
-                />
-                <Route
                   path="/district-remediation"
                   element={
                     <WorkspacePlaceholder
                       title="Ventilation District Hazards"
                       subtitle="Assigned Underground Safety Tickets & Corrective Action Directives"
-                      phaseText="PHASE 5 FIELD OPS"
-                      statutoryRole="OVERMAN / MINING_SIRDAR"
-                    />
-                  }
-                />
-                <Route
-                  path="/shift-diary"
-                  element={
-                    <WorkspacePlaceholder
-                      title="CMR Form IV Shift Diary"
-                      subtitle="Statutory End-of-Shift Journal & Gas Measurement Records"
                       phaseText="PHASE 5 FIELD OPS"
                       statutoryRole="OVERMAN / MINING_SIRDAR"
                     />

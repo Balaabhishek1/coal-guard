@@ -127,3 +127,25 @@ class FormIVInspectionRead(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class FormIVInspectionDetailRead(FormIVInspectionRead):
+    """Detailed Form IV inspection schema including inspector name, location name, and evidence URLs."""
+
+    inspector_name: Optional[str] = None
+    location_name: Optional[str] = None
+    evidence_urls: List[str] = Field(default_factory=list)
+
+
+class SyncLogRead(BaseModel):
+    """Schema for querying mobile synchronization batch logs."""
+
+    sync_id: uuid.UUID
+    user_id: uuid.UUID
+    device_id: str
+    records_processed: int
+    status: str
+    timestamp: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+

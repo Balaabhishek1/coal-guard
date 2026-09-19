@@ -127,9 +127,16 @@ const NAV_ITEMS: NavItem[] = [
   // Field Inspector & Overman
   {
     name: "Mobile Sync Queue",
-    path: "/field-queue",
+    path: "/field-ops/sync-logs",
     icon: RefreshCw,
-    allowedRoles: ["OVERMAN", "MINING_SIRDAR", "ADMIN"],
+    allowedRoles: [
+      "OVERMAN",
+      "MINING_SIRDAR",
+      "COLLIERY_MANAGER",
+      "MANAGER",
+      "ADMIN",
+    ],
+    badgeText: "OFFLINE",
   },
   {
     name: "District Hazards",
@@ -139,9 +146,17 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     name: "Form IV Shift Diary",
-    path: "/shift-diary",
+    path: "/field-ops/form-iv",
     icon: BookOpen,
-    allowedRoles: ["OVERMAN", "MINING_SIRDAR", "ADMIN"],
+    allowedRoles: [
+      "OVERMAN",
+      "MINING_SIRDAR",
+      "COLLIERY_MANAGER",
+      "MANAGER",
+      "DGMS_INSPECTOR",
+      "ADMIN",
+    ],
+    badgeText: "CMR IV",
   },
 
   // Corporate HQ & DGMS Regulator
