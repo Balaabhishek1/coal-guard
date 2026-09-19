@@ -81,9 +81,16 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     name: "SLA Remediation Board",
-    path: "/remediation-board",
+    path: "/governance/remediation",
     icon: ListChecks,
-    allowedRoles: ["COLLIERY_MANAGER", "MANAGER", "ADMIN"],
+    allowedRoles: [
+      "COLLIERY_MANAGER",
+      "MANAGER",
+      "OVERMAN",
+      "SAFETY_OFFICER",
+      "ADMIN",
+    ],
+    badgeText: "CMR 182",
   },
   {
     name: "Spatial Mine Twin",
@@ -146,9 +153,16 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     name: "Cryptographic Audit Ledger",
-    path: "/audit-ledger",
+    path: "/governance/audit-ledger",
     icon: Fingerprint,
-    allowedRoles: ["CORPORATE_HQ", "DGMS_INSPECTOR", "ADMIN"],
+    allowedRoles: [
+      "COLLIERY_MANAGER",
+      "MANAGER",
+      "DGMS_INSPECTOR",
+      "CORPORATE_HQ",
+      "ADMIN",
+    ],
+    badgeText: "SHA-256",
   },
   {
     name: "Violation Analytics",

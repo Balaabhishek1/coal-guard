@@ -11,6 +11,8 @@ import WorkspacePlaceholder from "@/pages/workspace-placeholder";
 import HardwareMatrixPage from "@/features/hardware/pages/hardware-matrix-page";
 import TelemetryDashboardPage from "@/features/telemetry/pages/telemetry-dashboard-page";
 import GateHudPage from "@/features/cctv-gate/pages/gate-hud-page";
+import RemediationPage from "@/features/governance/pages/remediation-page";
+import AuditLedgerPage from "@/features/governance/pages/audit-ledger-page";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -140,17 +142,6 @@ export const App: React.FC = () => {
                   }
                 />
                 <Route
-                  path="/remediation-board"
-                  element={
-                    <WorkspacePlaceholder
-                      title="SLA Remediation Kanban Board"
-                      subtitle="Four-Column Statutory Hazard Rectification Workflow"
-                      phaseText="PHASE 4 ACTIVE COMPONENT"
-                      statutoryRole="COLLIERY_MANAGER"
-                    />
-                  }
-                />
-                <Route
                   path="/workforce-compliance"
                   element={
                     <WorkspacePlaceholder
@@ -160,6 +151,30 @@ export const App: React.FC = () => {
                       statutoryRole="COLLIERY_MANAGER"
                     />
                   }
+                />
+              </Route>
+
+              {/* Statutory Governance: Remediation Kanban (Manager, Overman, Safety Officer, Admin) */}
+              <Route
+                element={
+                  <ProtectedRoute
+                    allowedRoles={[
+                      "COLLIERY_MANAGER",
+                      "MANAGER",
+                      "OVERMAN",
+                      "SAFETY_OFFICER",
+                      "ADMIN",
+                    ]}
+                  />
+                }
+              >
+                <Route
+                  path="/governance/remediation"
+                  element={<RemediationPage />}
+                />
+                <Route
+                  path="/remediation-board"
+                  element={<RemediationPage />}
                 />
               </Route>
 
@@ -268,6 +283,30 @@ export const App: React.FC = () => {
                 />
               </Route>
 
+              {/* Statutory Governance: Cryptographic Audit Ledger (Manager, DGMS Inspector, Admin, Corporate HQ) */}
+              <Route
+                element={
+                  <ProtectedRoute
+                    allowedRoles={[
+                      "COLLIERY_MANAGER",
+                      "MANAGER",
+                      "DGMS_INSPECTOR",
+                      "ADMIN",
+                      "CORPORATE_HQ",
+                    ]}
+                  />
+                }
+              >
+                <Route
+                  path="/governance/audit-ledger"
+                  element={<AuditLedgerPage />}
+                />
+                <Route
+                  path="/audit-ledger"
+                  element={<AuditLedgerPage />}
+                />
+              </Route>
+
               {/* Corporate HQ & DGMS Regulatory Workspace */}
               <Route
                 element={
@@ -283,17 +322,6 @@ export const App: React.FC = () => {
                       title="Apex Risk Heatmap & Governance"
                       subtitle="Multi-Subsidiary Risk Scoring, MSRI Aggregations, and Alert Feeds"
                       phaseText="PHASE 4 REGULATORY C2"
-                      statutoryRole="CORPORATE_HQ / DGMS_INSPECTOR"
-                    />
-                  }
-                />
-                <Route
-                  path="/audit-ledger"
-                  element={
-                    <WorkspacePlaceholder
-                      title="Cryptographic Audit Ledger Explorer"
-                      subtitle="Tamper-Evident SHA-256 Hash Chain Browser & Client-side WASM Verifier"
-                      phaseText="PHASE 4 CRYPTO LEDGER"
                       statutoryRole="CORPORATE_HQ / DGMS_INSPECTOR"
                     />
                   }
