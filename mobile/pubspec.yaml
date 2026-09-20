@@ -37,6 +37,16 @@ dependencies:
   # Industrial Vector Icons
   lucide_icons: ^0.257.0
 
+  # Camera & Media Evidence Capture
+  image_picker: ^1.1.1
+  flutter_image_compress: ^2.3.0
+
+  # Underground Beacon & Tag Scanning
+  nfc_manager: ^3.3.0
+
+  # Network Detection for Surface Wi-Fi / Offline State
+  connectivity_plus: ^6.0.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

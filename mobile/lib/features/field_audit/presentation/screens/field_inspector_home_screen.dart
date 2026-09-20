@@ -150,60 +150,93 @@ class FieldInspectorHomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
 
-            // Pending Queue Card
+            // Pending Queue Card (Tappable to View Sync Details)
             pendingCountAsync.when(
-              data: (count) => Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppTheme.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppTheme.border),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: count > 0
-                            ? AppTheme.primary.withOpacity(0.15)
-                            : AppTheme.success.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(12),
+              data: (count) => InkWell(
+                onTap: () => context.push('/sync-status'),
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppTheme.border),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: count > 0
+                              ? AppTheme.primary.withOpacity(0.15)
+                              : AppTheme.success.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          LucideIcons.cloudUpload,
+                          color: count > 0 ? AppTheme.primary : AppTheme.success,
+                          size: 20,
+                        ),
                       ),
-                      child: Icon(
-                        LucideIcons.cloudUpload,
-                        color: count > 0 ? AppTheme.primary : AppTheme.success,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '$count Form IV Records Pending Sync',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.textPrimary,
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '$count Form IV Records Pending Sync',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.textPrimary,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 2),
-                          const Text(
-                            'Will automatically upload when connected to surface Wi-Fi',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppTheme.textSecondary,
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Tap to manage sync queue or force upload',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppTheme.textSecondary,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                      const Icon(LucideIcons.chevronRight, size: 18, color: AppTheme.textMuted),
+                    ],
+                  ),
                 ),
               ),
               loading: () => const SizedBox.shrink(),
               error: (_, __) => const SizedBox.shrink(),
+            ),
+            const SizedBox(height: 16),
+
+            // Quick Operational Tools
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(LucideIcons.plusCircle, size: 16),
+                    label: const Text('New Audit'),
+                    onPressed: () => context.push('/audit/form-iv'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(LucideIcons.refreshCw, size: 16),
+                    label: const Text('Sync Queue'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.primary,
+                      side: const BorderSide(color: AppTheme.primary),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () => context.push('/sync-status'),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 24),
 
@@ -342,6 +375,16 @@ class FieldInspectorHomeScreen extends ConsumerWidget {
               ),
             ),
           ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.push('/audit/form-iv'),
+        backgroundColor: AppTheme.primary,
+        foregroundColor: Colors.black,
+        icon: const Icon(LucideIcons.plus, size: 20),
+        label: const Text(
+          'New Audit',
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
     );
