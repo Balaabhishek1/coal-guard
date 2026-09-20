@@ -1,0 +1,49 @@
+name: coal_guard_mobile
+description: "CoalGuard Mobile Field Inspector & Offline Statutory Form IV Auditing Client (DGMS CMR-2017)"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.19.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management & DI
+  flutter_riverpod: ^2.5.1
+
+  # Offline Embedded Database & Filepath Resolution
+  sqflite: ^2.3.2
+  path: ^1.9.0
+
+  # Encrypted Keystore for JWT Credentials & Passphrase Hashes
+  flutter_secure_storage: ^9.0.0
+
+  # Resilient HTTP Client with Custom Interceptors & Short Underground Timeouts
+  dio: ^5.4.3+1
+
+  # Declarative Deep Linking & Navigation
+  go_router: ^14.0.0
+
+  # Internationalization & Timestamp Formatter
+  intl: ^0.19.0
+
+  # Cryptographic Identifiers & Offline Sync Id Generation
+  uuid: ^4.4.0
+  crypto: ^3.0.3
+
+  # Industrial Vector Icons
+  lucide_icons: ^0.257.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  sqflite_common_ffi: ^2.3.2
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/
