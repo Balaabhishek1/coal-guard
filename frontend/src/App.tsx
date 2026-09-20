@@ -136,14 +136,7 @@ export const App: React.FC = () => {
               >
                 <Route
                   path="/manager-dashboard"
-                  element={
-                    <WorkspacePlaceholder
-                      title="Colliery Operational Overview"
-                      subtitle="High-level KPI Aggregation, Shift Production & Threat Matrix"
-                      phaseText="PHASE 4 ACTIVE COMPONENT"
-                      statutoryRole="COLLIERY_MANAGER"
-                    />
-                  }
+                  element={<DashboardPage />}
                 />
                 <Route
                   path="/workforce-compliance"
@@ -222,14 +215,7 @@ export const App: React.FC = () => {
               >
                 <Route
                   path="/gis-twin"
-                  element={
-                    <WorkspacePlaceholder
-                      title="Spatial Mine Twin & GIS Visualizer"
-                      subtitle="2D/3D PostGIS Seams, Gallery Vectors, and Geofences via MapLibre GL"
-                      phaseText="PHASE 2/3 SPATIAL ENGINE"
-                      statutoryRole="COLLIERY_MANAGER / DGMS_INSPECTOR"
-                    />
-                  }
+                  element={<DashboardPage />}
                 />
                 <Route
                   path="/statutory-reports"

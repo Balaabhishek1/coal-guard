@@ -3,22 +3,22 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center gap-1.5 rounded px-2 py-0.5 font-telemetry font-medium uppercase tracking-wider text-[11px] transition-colors border",
+  "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium tracking-tight transition-colors border",
   {
     variants: {
       variant: {
         default:
-          "border-outline-variant/60 bg-surface-container-high text-on-surface",
+          "border-white/[0.08] bg-surface-container-high text-on-surface",
         safe:
-          "border-emerald-500/40 bg-emerald-500/10 text-emerald-400",
+          "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
         warning:
-          "border-amber-500/40 bg-amber-500/10 text-amber-400",
+          "border-amber-500/20 bg-amber-500/10 text-amber-400",
         critical:
-          "border-rose-500/40 bg-rose-500/15 text-rose-400 font-semibold",
+          "border-rose-500/25 bg-rose-500/15 text-rose-400 font-semibold",
         identity:
-          "border-sky-500/40 bg-sky-500/15 text-sky-300",
+          "border-sky-500/20 bg-sky-500/10 text-sky-300",
         outline:
-          "border-outline-variant text-on-surface-variant bg-transparent",
+          "border-white/[0.08] text-on-surface-variant bg-transparent",
       },
     },
     defaultVariants: {
@@ -39,12 +39,12 @@ function Badge({ className, variant, dot = false, children, ...props }: BadgePro
       {dot && (
         <span
           className={cn(
-            "h-1.5 w-1.5 rounded-full",
+            "h-1.5 w-1.5 rounded-full shrink-0",
             variant === "safe" && "bg-emerald-400",
-            variant === "warning" && "bg-amber-400 animate-pulse",
-            variant === "critical" && "bg-rose-400 animate-ping",
+            variant === "warning" && "bg-amber-400",
+            variant === "critical" && "bg-rose-400",
             variant === "identity" && "bg-sky-400",
-            (!variant || variant === "default" || variant === "outline") && "bg-slate-400"
+            (!variant || variant === "default" || variant === "outline") && "bg-zinc-400"
           )}
         />
       )}

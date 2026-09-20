@@ -8,80 +8,83 @@ export default {
   theme: {
     extend: {
       colors: {
-        /* Google Stitch & Industrial Dark Tokens */
-        background: "#051424",
-        surface: "#051424",
-        "surface-dim": "#051424",
-        "surface-bright": "#2c3a4c",
-        "surface-container-lowest": "#010f1f",
-        "surface-container-low": "#0d1c2d",
-        "surface-container": "#122131",
-        "surface-container-high": "#1c2b3c",
-        "surface-container-highest": "#273647",
-        "surface-variant": "#273647",
+        /* CoalGuard Matte Obsidian & Charcoal Slate Design System */
+        background: "#0c0d12",
+        surface: "#11131a",
+        "surface-dim": "#0c0d12",
+        "surface-bright": "#1f2330",
+        "surface-container-lowest": "#07080b",
+        "surface-container-low": "#101218",
+        "surface-container": "#151821",
+        "surface-container-high": "#1b1e2a",
+        "surface-container-highest": "#222635",
+        "surface-variant": "#1e2230",
         
-        "on-surface": "#d4e4fa",
-        "on-surface-variant": "#bec8d2",
-        "inverse-surface": "#d4e4fa",
-        "inverse-on-surface": "#233143",
+        "on-surface": "#f3f4f6",
+        "on-surface-variant": "#8e95a5",
+        "inverse-surface": "#f3f4f6",
+        "inverse-on-surface": "#11131a",
         
         primary: {
-          DEFAULT: "#89ceff",
-          foreground: "#00344d",
-          container: "#0ea5e9",
-          "container-foreground": "#003751",
-          fixed: "#c9e6ff",
-          "fixed-dim": "#89ceff",
+          DEFAULT: "#f3f4f6",
+          foreground: "#0c0d12",
+          container: "#262b3a",
+          "container-foreground": "#ffffff",
+          fixed: "#e2e8f0",
+          "fixed-dim": "#94a3b8",
+          accent: "#38bdf8",
         },
         secondary: {
-          DEFAULT: "#4edea3",
-          foreground: "#003824",
-          container: "#00a572",
-          "container-foreground": "#00311f",
-          fixed: "#6ffbbe",
-          "fixed-dim": "#4edea3",
+          DEFAULT: "#22c55e",
+          foreground: "#0c0d12",
+          container: "#166534",
+          "container-foreground": "#dcfce7",
+          fixed: "#86efac",
+          "fixed-dim": "#22c55e",
         },
         tertiary: {
-          DEFAULT: "#ffb95f",
-          foreground: "#472a00",
-          container: "#d88a00",
-          "container-foreground": "#4a2c00",
-          fixed: "#ffddb8",
-          "fixed-dim": "#ffb95f",
+          DEFAULT: "#f59e0b",
+          foreground: "#0c0d12",
+          container: "#78350f",
+          "container-foreground": "#fef3c7",
+          fixed: "#fde68a",
+          "fixed-dim": "#f59e0b",
         },
         error: {
-          DEFAULT: "#ffb4ab",
-          foreground: "#690005",
-          container: "#93000a",
-          "container-foreground": "#ffdad6",
+          DEFAULT: "#f43f5e",
+          foreground: "#ffffff",
+          container: "#881337",
+          "container-foreground": "#ffe4e6",
         },
 
         outline: {
-          DEFAULT: "#88929b",
-          variant: "#3e4850",
+          DEFAULT: "#272b38",
+          variant: "#1c202b",
         },
 
-        /* Statutory & Telemetry Semantic Tokens */
+        /* Calibrated Operations Semantic Tokens */
         statutory: {
-          safe: "#10b981",       /* Emerald-500: Statutory Compliant */
-          warning: "#f59e0b",    /* Amber-500: Cautionary / Warning */
-          critical: "#f43f5e",   /* Rose-500: Critical Breach */
-          identity: "#0ea5e9",   /* Sky-500: Identity & Ledger Anchor */
-          neutral: "#94a3b8",    /* Slate-400: Passive Metadata */
+          safe: "#22c55e",       /* Emerald-500 */
+          warning: "#f59e0b",    /* Amber-500 */
+          critical: "#f43f5e",   /* Rose-500 */
+          identity: "#38bdf8",   /* Sky-400 */
+          neutral: "#71788a",    /* Slate-500 */
         },
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
-        body: ["Inter", "system-ui", "sans-serif"],
+        sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
+        body: ["Inter", "system-ui", "-apple-system", "sans-serif"],
         mono: ["JetBrains Mono", "monospace"],
         telemetry: ["JetBrains Mono", "monospace"],
       },
       borderRadius: {
-        DEFAULT: "0.25rem",
-        sm: "0.125rem",
-        md: "0.25rem",
-        lg: "0.375rem",
-        xl: "0.5rem",
+        DEFAULT: "0.75rem",
+        sm: "0.375rem",
+        md: "0.5rem",
+        lg: "0.75rem",
+        xl: "1rem",
+        "2xl": "1.25rem",
+        "3xl": "1.5rem",
         full: "9999px",
       },
       spacing: {

@@ -4,63 +4,64 @@
 
 @layer base {
   :root {
-    --background: 218 75% 8%;
-    --foreground: 214 74% 91%;
+    --background: 224 16% 6%;
+    --foreground: 210 20% 98%;
 
-    --card: 222 47% 11%;
-    --card-foreground: 214 74% 91%;
+    --card: 224 20% 10%;
+    --card-foreground: 210 20% 98%;
 
-    --popover: 222 47% 11%;
-    --popover-foreground: 214 74% 91%;
+    --popover: 224 20% 10%;
+    --popover-foreground: 210 20% 98%;
 
-    --primary: 199 89% 48%;
-    --primary-foreground: 218 75% 8%;
+    --primary: 210 20% 98%;
+    --primary-foreground: 224 16% 6%;
 
-    --secondary: 156 72% 40%;
-    --secondary-foreground: 218 75% 8%;
+    --secondary: 142 71% 45%;
+    --secondary-foreground: 224 16% 6%;
 
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 224 14% 15%;
+    --muted-foreground: 220 9% 60%;
 
-    --accent: 217 33% 22%;
-    --accent-foreground: 214 74% 91%;
+    --accent: 224 18% 18%;
+    --accent-foreground: 210 20% 98%;
 
     --destructive: 347 77% 50%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217 33% 20%;
-    --input: 217 33% 20%;
-    --ring: 199 89% 48%;
+    --border: 224 14% 17%;
+    --input: 224 14% 17%;
+    --ring: 210 20% 98%;
 
-    --radius: 0.25rem;
+    --radius: 0.75rem;
 
-    /* Stitch Tokens Direct Custom Properties */
-    --stitch-surface: #051424;
-    --stitch-surface-low: #0d1c2d;
-    --stitch-surface-container: #122131;
-    --stitch-surface-high: #1c2b3c;
-    --stitch-surface-highest: #273647;
-    --stitch-primary: #89ceff;
-    --stitch-primary-container: #0ea5e9;
-    --stitch-secondary: #4edea3;
-    --stitch-tertiary: #ffb95f;
-    --stitch-error: #ffb4ab;
-    --stitch-border: #1e293b;
-    --stitch-border-highlight: #334155;
+    /* CoalGuard Matte Obsidian Tokens */
+    --stitch-surface: #0c0d12;
+    --stitch-surface-low: #101218;
+    --stitch-surface-container: #151821;
+    --stitch-surface-high: #1b1e2a;
+    --stitch-surface-highest: #222635;
+    --stitch-primary: #f3f4f6;
+    --stitch-primary-container: #262b3a;
+    --stitch-secondary: #22c55e;
+    --stitch-tertiary: #f59e0b;
+    --stitch-error: #f43f5e;
+    --stitch-border: #232734;
+    --stitch-border-highlight: #2e3346;
   }
 
   * {
-    border-color: #1e293b;
+    border-color: #232734;
   }
 
   body {
-    background-color: #051424;
-    color: #d4e4fa;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: #0c0d12;
+    color: #f3f4f6;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     overflow-x: hidden;
+    letter-spacing: -0.01em;
   }
 
-  /* Monospace Telemetry Numbers */
+  /* Telemetry Numbers & Timers */
   .font-mono,
   .font-telemetry {
     font-family: 'JetBrains Mono', monospace;
@@ -68,67 +69,61 @@
   }
 }
 
-/* Industrial Precision Scrollbar */
+/* Minimalist Dark Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #051424;
+  background: #0c0d12;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
-  border-radius: 2px;
+  background: #1f2330;
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #2a2f40;
 }
 
-/* Pulse animation for safety status indicators */
+/* Restrained, non-flashy status indicator pulses */
 @keyframes status-pulse-emerald {
   0%, 100% {
     opacity: 1;
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
   }
   50% {
-    opacity: 0.85;
-    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0);
+    opacity: 0.6;
   }
 }
 
 @keyframes status-pulse-amber {
   0%, 100% {
     opacity: 1;
-    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
   }
   50% {
-    opacity: 0.85;
-    box-shadow: 0 0 0 4px rgba(245, 158, 11, 0);
+    opacity: 0.5;
   }
 }
 
 @keyframes status-pulse-rose {
   0%, 100% {
     opacity: 1;
-    box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.6);
   }
   50% {
-    opacity: 0.7;
-    box-shadow: 0 0 0 6px rgba(244, 63, 94, 0);
+    opacity: 0.4;
   }
 }
 
 .pulse-safe {
-  animation: status-pulse-emerald 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+  animation: status-pulse-emerald 2.5s infinite ease-in-out;
 }
 
 .pulse-warning {
-  animation: status-pulse-amber 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+  animation: status-pulse-amber 2s infinite ease-in-out;
 }
 
 .pulse-critical {
-  animation: status-pulse-rose 1.5s infinite cubic-bezier(0.4, 0, 0.6, 1);
+  animation: status-pulse-rose 1.5s infinite ease-in-out;
 }
