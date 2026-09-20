@@ -6,10 +6,22 @@ import type {
   WSEventMessage,
 } from "@/types/vision-edge";
 
-export const DEFAULT_WS_URL =
-  import.meta.env.VITE_WS_URL
-    ? `${import.meta.env.VITE_WS_URL}/control-room`
-    : "ws://localhost:8000/api/v1/ws/control-room";
+export const getControlRoomWSUrl = (): string => {
+  const envWsUrl = import.meta.env.VITE_WS_URL;
+  if (!envWsUrl) {
+    return "ws://localhost:8000/api/v1/ws/control-room";
+  }
+  if (envWsUrl.startsWith("ws://") || envWsUrl.startsWith("wss://")) {
+    return `${envWsUrl}/control-room`;
+  }
+  if (typeof window !== "undefined") {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    return `${protocol}//${window.location.host}${envWsUrl}/control-room`;
+  }
+  return `ws://localhost:8000${envWsUrl}/control-room`;
+};
+
+export const DEFAULT_WS_URL = getControlRoomWSUrl();
 
 interface UseControlRoomWSOptions {
   url?: string;

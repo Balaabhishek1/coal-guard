@@ -1,0 +1,175 @@
+name: coalguard
+
+services:
+  # ============================================================================
+  # 1. PostgreSQL 16 + PostGIS 3.4 + TimescaleDB
+  # ============================================================================
+  db:
+    image: timescale/timescaledb-ha:pg16
+    container_name: coalguard_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mineguard}
+      POSTGRES_USER: ${POSTGRES_USER:-mineguard_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mineguard_secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mineguard_app} -d ${POSTGRES_DB:-mineguard}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - coalguard_network
+
+  # ============================================================================
+  # 2. Redis 7 (Cache, WebSocket Channel Broker, Celery Queue)
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: coalguard_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - coalguard_network
+
+  # ============================================================================
+  # 3. FastAPI Backend (REST API, PostGIS Spatial Engine, Edge Gate WebSocket)
+  # ============================================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: coalguard_backend
+    restart: unless-stopped
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    environment:
+      PROJECT_NAME: "CoalGuard Core Engine"
+      ENVIRONMENT: "production"
+      DEBUG: "false"
+      DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER:-mineguard_app}:${POSTGRES_PASSWORD:-mineguard_secret}@db:5432/${POSTGRES_DB:-mineguard}"
+      REDIS_URL: "redis://redis:6379/0"
+      CELERY_BROKER_URL: "redis://redis:6379/1"
+      CELERY_RESULT_BACKEND: "redis://redis:6379/2"
+      JWT_SECRET: ${JWT_SECRET:-mineguard_statutory_jwt_secret_key_change_in_production_2026}
+      ALGORITHM: "HS256"
+      ACCESS_TOKEN_EXPIRE_MINUTES: "480"
+      MAX_CONTINUOUS_SHIFT_HOURS: "8.0"
+      UPLOAD_DIR: "/app/uploads/evidence"
+      RUN_MIGRATIONS: "true"
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - coalguard_network
+
+  # ============================================================================
+  # 4. Celery Worker (PaddleOCR Certificate Processing & Async Tasks)
+  # ============================================================================
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: coalguard_celery_worker
+    restart: unless-stopped
+    command: celery -A app.worker.celery_app worker --loglevel=info
+    environment:
+      PROJECT_NAME: "CoalGuard Core Engine"
+      ENVIRONMENT: "production"
+      DEBUG: "false"
+      DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER:-mineguard_app}:${POSTGRES_PASSWORD:-mineguard_secret}@db:5432/${POSTGRES_DB:-mineguard}"
+      REDIS_URL: "redis://redis:6379/0"
+      CELERY_BROKER_URL: "redis://redis:6379/1"
+      CELERY_RESULT_BACKEND: "redis://redis:6379/2"
+      JWT_SECRET: ${JWT_SECRET:-mineguard_statutory_jwt_secret_key_change_in_production_2026}
+      UPLOAD_DIR: "/app/uploads/evidence"
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      backend:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    networks:
+      - coalguard_network
+
+  # ============================================================================
+  # 5. Celery Beat (Periodic DGMS CMR-2017 SLA Escalation Scheduler)
+  # ============================================================================
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: coalguard_celery_beat
+    restart: unless-stopped
+    command: celery -A app.worker.celery_app beat --loglevel=info
+    environment:
+      REDIS_URL: "redis://redis:6379/0"
+      CELERY_BROKER_URL: "redis://redis:6379/1"
+      CELERY_RESULT_BACKEND: "redis://redis:6379/2"
+    depends_on:
+      celery_worker:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    networks:
+      - coalguard_network
+
+  # ============================================================================
+  # 6. React 19 Frontend + Nginx Gateway (SPA Delivery & API Reverse Proxy)
+  # ============================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api/v1
+        VITE_WS_URL: /api/v1/ws
+    container_name: coalguard_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      - coalguard_network
+
+# ==============================================================================
+# Persistent Named Volumes
+# ==============================================================================
+volumes:
+  postgres_data:
+    name: coalguard_postgres_data
+  redis_data:
+    name: coalguard_redis_data
+  uploads_data:
+    name: coalguard_uploads_data
+
+# ==============================================================================
+# Isolated Bridge Network
+# ==============================================================================
+networks:
+  coalguard_network:
+    name: coalguard_network
+    driver: bridge

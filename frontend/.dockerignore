@@ -1,0 +1,21 @@
+# Dependencies & Build Output
+node_modules
+dist
+.env.local
+.env.*.local
+*.tsbuildinfo
+
+# Git
+.git
+.gitignore
+
+# Testing & Coverage
+coverage
+.nyc_output
+
+# Editor & OS Files
+.vscode
+.idea
+*.log
+.DS_Store
+Thumbs.db
