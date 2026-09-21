@@ -83,27 +83,35 @@ def upgrade() -> None:
                 IF EXISTS (
                     SELECT 1 FROM pg_extension WHERE extname = 'timescaledb'
                 ) THEN
-                    PERFORM create_hypertable(
-                        'sensor_telemetry',
-                        'time',
-                        chunk_time_interval => INTERVAL '7 days',
-                        if_not_exists => TRUE
-                    );
+                    BEGIN
+                        PERFORM create_hypertable(
+                            'sensor_telemetry',
+                            'time',
+                            chunk_time_interval => INTERVAL '7 days',
+                            if_not_exists => TRUE
+                        );
+                    EXCEPTION WHEN OTHERS THEN
+                        RAISE NOTICE 'Skipping hypertable creation: %', SQLERRM;
+                    END;
 
-                    EXECUTE '
-                        CREATE MATERIALIZED VIEW IF NOT EXISTS hourly_gas_averages
-                        WITH (timescaledb.continuous) AS
-                        SELECT time_bucket(''1 hour'', time) AS bucket,
-                               hardware_id,
-                               metric_type,
-                               AVG(reading_value) AS avg_reading,
-                               MAX(reading_value) AS max_reading,
-                               MIN(reading_value) AS min_reading,
-                               COUNT(reading_value) AS sample_count
-                        FROM sensor_telemetry
-                        GROUP BY bucket, hardware_id, metric_type
-                        WITH NO DATA;
-                    ';
+                    BEGIN
+                        EXECUTE '
+                            CREATE MATERIALIZED VIEW IF NOT EXISTS hourly_gas_averages
+                            WITH (timescaledb.continuous) AS
+                            SELECT time_bucket(''1 hour'', time) AS bucket,
+                                   hardware_id,
+                                   metric_type,
+                                   AVG(reading_value) AS avg_reading,
+                                   MAX(reading_value) AS max_reading,
+                                   MIN(reading_value) AS min_reading,
+                                   COUNT(reading_value) AS sample_count
+                            FROM sensor_telemetry
+                            GROUP BY bucket, hardware_id, metric_type
+                            WITH NO DATA;
+                        ';
+                    EXCEPTION WHEN OTHERS THEN
+                        RAISE NOTICE 'Skipping continuous aggregate creation: %', SQLERRM;
+                    END;
                 END IF;
             END $$;
             """
