@@ -1,0 +1,7 @@
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+# Enforce essential error checks (syntax errors, undefined variables, critical runtime issues)
+select = ["E9", "F63", "F7", "F82"]
