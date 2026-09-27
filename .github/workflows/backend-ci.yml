@@ -79,17 +79,22 @@ jobs:
 
       - name: Run Database Migrations
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5433/coalguard_test
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/coalguard_test
         run: |
+          for i in {1..30}; do
+            pg_isready -h 127.0.0.1 -p 5433 && break
+            echo "Waiting for PostgreSQL service on port 5433..."
+            sleep 1
+          done
           cd backend
           alembic upgrade head
 
       - name: Execute Automated Test Suite (Pytest)
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5433/coalguard_test
-          REDIS_URL: redis://localhost:6379/0
-          CELERY_BROKER_URL: redis://localhost:6379/1
-          CELERY_RESULT_BACKEND: redis://localhost:6379/2
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5433/coalguard_test
+          REDIS_URL: redis://127.0.0.1:6379/0
+          CELERY_BROKER_URL: redis://127.0.0.1:6379/1
+          CELERY_RESULT_BACKEND: redis://127.0.0.1:6379/2
           JWT_SECRET: statutory_ci_test_secret_key_2026
           ENVIRONMENT: testing
           DEBUG: "false"
