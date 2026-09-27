@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, s
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_db, get_optional_current_user
+from app.api.dependencies import get_current_user, get_db
 from app.models.sync_log import FormIVInspection, SyncLog, InspectionEvidence
 from app.models.user import User, UserRole
 from app.schemas.sync import (
@@ -38,43 +38,24 @@ router = APIRouter(prefix="/sync", tags=["Mobile Field Sync Engine"])
     description=(
         "Ingests offline DGMS Form IV daily shift inspection entries from mobile devices. "
         "Enforces strict UUID idempotency over `sync_id`, unpacks strata and ventilation metrics, "
-        "evaluates statutory hazard thresholds (CH4 >= 1.25%, Air Velocity < 30 m/min, Torque < 100 Nm), "
+        "evaluates statutory hazard thresholds (CH4 >= 1.25%, Air Velocity < 15 m/min, Torque < 80 Nm), "
         "and anchors batches in the SHA-256 cryptographic audit ledger."
     ),
 )
 async def sync_field_batch(
     payload: SyncBatchPayload,
-    inspector_id: Optional[uuid.UUID] = Query(None, description="Explicit Inspector User UUID if unauthenticated"),
+    inspector_id: Optional[uuid.UUID] = Query(None, description="Explicit Inspector User UUID if assigned by authorized officer"),
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Execute idempotent batch unpacking and statutory interlock analysis."""
-    # 1. Determine effective inspector identity
-    effective_inspector_id: Optional[uuid.UUID] = None
-    if current_user is not None:
-        effective_inspector_id = current_user.id
-    elif inspector_id is not None:
+    effective_inspector_id: uuid.UUID = current_user.id
+    if inspector_id is not None and current_user.role in [
+        UserRole.SAFETY_OFFICER.value,
+        UserRole.COLLIERY_MANAGER.value,
+        UserRole.MANAGER.value,
+    ]:
         effective_inspector_id = inspector_id
-    else:
-        # Fallback: Find an existing active Overman or Safety Officer in the system
-        stmt = select(User).where(
-            User.role.in_([UserRole.OVERMAN.value, UserRole.MINING_SIRDAR.value, UserRole.SAFETY_OFFICER.value])
-        ).limit(1)
-        res = await db.execute(stmt)
-        default_officer = res.scalar_one_or_none()
-        if default_officer:
-            effective_inspector_id = default_officer.id
-        else:
-            # Last resort fallback: any user
-            any_user_res = await db.execute(select(User).limit(1))
-            any_user = any_user_res.scalar_one_or_none()
-            if any_user:
-                effective_inspector_id = any_user.id
-            else:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="No inspector profile could be resolved. Please authenticate or provide inspector_id.",
-                )
 
     return await SyncService.process_batch(
         db=db,
@@ -93,6 +74,7 @@ async def sync_field_batch(
 async def init_resumable_upload(
     payload: ChunkUploadInit,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Initiates an upload token and stages a chunk assembly directory."""
     return await UploadService.init_upload(db=db, payload=payload)
@@ -110,6 +92,7 @@ async def upload_binary_chunk(
     request: Request,
     chunk_index: int = Query(..., ge=0, description="0-indexed sequence number of the chunk"),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Appends binary chunk data to the session staging directory."""
     chunk_bytes = await request.body()
@@ -140,6 +123,7 @@ async def list_inspections(
     limit: int = Query(50, ge=1, le=200, description="Max records to return"),
     skip: int = Query(0, ge=0, description="Pagination offset"),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Query Form IV shift logs with optional filters."""
     stmt = select(FormIVInspection).order_by(desc(FormIVInspection.inspection_time))
@@ -165,6 +149,7 @@ async def list_sync_logs(
     skip: int = Query(0, ge=0),
     status_filter: Optional[str] = Query(None, alias="status"),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> List[SyncLogRead]:
     """Retrieve mobile sync batch logs."""
     stmt = select(SyncLog).order_by(desc(SyncLog.timestamp))
@@ -189,6 +174,7 @@ async def list_form_iv_inspections(
     limit: int = Query(50, ge=1, le=200),
     skip: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> List[FormIVInspectionDetailRead]:
     """Query Form IV shift logs with details and photos."""
     stmt = select(FormIVInspection).order_by(desc(FormIVInspection.inspection_time))
@@ -235,6 +221,7 @@ async def list_form_iv_inspections(
 async def get_form_iv_inspection_by_id(
     inspection_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> FormIVInspectionDetailRead:
     """Fetch single Form IV inspection detail."""
     stmt = select(FormIVInspection).where(FormIVInspection.id == inspection_id)

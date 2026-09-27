@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useAuthStore } from "@/store/auth-store";
 import { useGateStore } from "@/store/gate-store";
 import type {
   EdgeAccessEventPayload,
@@ -6,19 +7,30 @@ import type {
   WSEventMessage,
 } from "@/types/vision-edge";
 
-export const getControlRoomWSUrl = (): string => {
+export const getControlRoomWSUrl = (token?: string | null): string => {
+  let base = "ws://localhost:8000/api/v1/ws/control-room";
   const envWsUrl = import.meta.env.VITE_WS_URL;
-  if (!envWsUrl) {
-    return "ws://localhost:8000/api/v1/ws/control-room";
+  if (envWsUrl) {
+    if (envWsUrl.startsWith("ws://") || envWsUrl.startsWith("wss://")) {
+      base = `${envWsUrl}/control-room`;
+    } else if (typeof window !== "undefined") {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      base = `${protocol}//${window.location.host}${envWsUrl}/control-room`;
+    } else {
+      base = `ws://localhost:8000${envWsUrl}/control-room`;
+    }
   }
-  if (envWsUrl.startsWith("ws://") || envWsUrl.startsWith("wss://")) {
-    return `${envWsUrl}/control-room`;
+  const effectiveToken =
+    token !== undefined
+      ? token
+      : typeof window !== "undefined"
+      ? useAuthStore.getState().token
+      : null;
+  if (effectiveToken) {
+    const separator = base.includes("?") ? "&" : "?";
+    return `${base}${separator}token=${encodeURIComponent(effectiveToken)}`;
   }
-  if (typeof window !== "undefined") {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    return `${protocol}//${window.location.host}${envWsUrl}/control-room`;
-  }
-  return `ws://localhost:8000${envWsUrl}/control-room`;
+  return base;
 };
 
 export const DEFAULT_WS_URL = getControlRoomWSUrl();
@@ -29,7 +41,9 @@ interface UseControlRoomWSOptions {
 }
 
 export function useControlRoomWS(options: UseControlRoomWSOptions = {}) {
-  const { url = DEFAULT_WS_URL, autoConnect = true } = options;
+  const authToken = useAuthStore((s) => s.token);
+  const url = options.url || getControlRoomWSUrl(authToken);
+  const { autoConnect = true } = options;
   const [isConnected, setIsConnected] = useState(false);
   const [lastMessage, setLastMessage] = useState<WSEventMessage | null>(null);
 

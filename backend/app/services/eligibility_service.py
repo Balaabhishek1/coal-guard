@@ -91,7 +91,14 @@ class EligibilityService:
             elapsed_seconds = (now - shift_start).total_seconds()
             shift_hours_elapsed = round(max(0.0, elapsed_seconds / 3600.0), 2)
 
-            if shift_hours_elapsed >= settings.MAX_CONTINUOUS_SHIFT_HOURS:
+            if shift_hours_elapsed >= 16.0:
+                # Stale unclosed shift from a previous workday (> 16 hours ago).
+                # Auto-conclude the stale shift so worker can start their fresh shift.
+                creds.current_shift_start = None
+                await db.commit()
+                shift_hours_elapsed = None
+                shift_limit_valid = True
+            elif shift_hours_elapsed >= settings.MAX_CONTINUOUS_SHIFT_HOURS:
                 shift_limit_valid = False
                 statutory_reasons.append(
                     f"Maximum shift duration exceeded ({shift_hours_elapsed}h elapsed)"

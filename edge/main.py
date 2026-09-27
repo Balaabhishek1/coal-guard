@@ -49,17 +49,20 @@ class EdgeTurnstileService:
         stream_url: Optional[str] = None,
         simulation_mode: bool = False,
         ppe_scenario: str = "COMPLIANT",
+        direction: str = "INGRESS",
     ) -> None:
         self.backend_url = backend_url or settings.backend_api_url
         self.location_id = location_id or settings.location_id
         self.stream_url = stream_url or settings.rtsp_stream_url
         self.simulation_mode = simulation_mode or settings.simulation_mode
         self.ppe_scenario = ppe_scenario
+        self.direction = direction.upper()
 
         # Initialize core components
         logger.info(
-            "[EdgeTurnstileService] Initializing Edge Gateway (Location: %s, Simulation: %s)",
+            "[EdgeTurnstileService] Initializing Edge Gateway (Location: %s, Direction: %s, Simulation: %s)",
             self.location_id,
+            self.direction,
             self.simulation_mode,
         )
 
@@ -150,8 +153,13 @@ class EdgeTurnstileService:
         )
 
         # 4. Determine Gate Actuation
-        gate_actuated = optical_ok and credential_ok
-        decision_str = "GRANTED (INTERLOCK DISENGAGED)" if gate_actuated else "DENIED (INTERLOCK HELD)"
+        if self.direction.upper() == "EGRESS":
+            gate_actuated = True
+            decision_str = "GRANTED (EGRESS OUTBYE SAFE PASSAGE)"
+        else:
+            gate_actuated = optical_ok and credential_ok
+            decision_str = "GRANTED (INTERLOCK DISENGAGED)" if gate_actuated else "DENIED (INTERLOCK HELD)"
+
         logger.info("[INTERLOCK DECISION] Access %s for %s (%s)", decision_str, worker_name, rfid_tag)
 
         # 5. Actuate Turnstile Relay
@@ -161,6 +169,7 @@ class EdgeTurnstileService:
         payload = {
             "rfid_tag": rfid_tag,
             "location_id": str(self.location_id),
+            "direction": self.direction.upper(),
             "optical_compliance": optical_ok,
             "credential_eligibility": credential_ok,
             "gate_actuated": gate_actuated,
@@ -173,6 +182,7 @@ class EdgeTurnstileService:
         return {
             "rfid_tag": rfid_tag,
             "worker_name": worker_name,
+            "direction": self.direction.upper(),
             "optical_compliance": optical_ok,
             "credential_eligibility": credential_ok,
             "gate_actuated": gate_actuated,
@@ -251,6 +261,13 @@ def main() -> None:
         default=None,
         help="RTSP camera stream URL or video device index",
     )
+    parser.add_argument(
+        "--direction",
+        type=str,
+        choices=["INGRESS", "EGRESS"],
+        default="INGRESS",
+        help="Transit direction: INGRESS (mine entry) or EGRESS (mine exit)",
+    )
 
     args = parser.parse_args()
 
@@ -269,6 +286,7 @@ def main() -> None:
         stream_url=args.stream,
         simulation_mode=args.simulated or args.rfid is not None or args.interactive,
         ppe_scenario=scenario,
+        direction=args.direction,
     )
 
     service.start()

@@ -10,9 +10,15 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db, get_optional_current_user
+from app.api.dependencies import (
+    get_current_active_user,
+    get_current_user,
+    get_db,
+    get_optional_current_user,
+    require_role,
+)
 from app.models.governance import AuditLedger
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.governance import (
     AuditIntegrityResponse,
     AuditLedgerRead,
@@ -60,9 +66,9 @@ def _serialize_violation(v) -> ViolationResponse:
 async def create_violation(
     payload: ViolationCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_active_user),
 ) -> ViolationResponse:
-    reporter_id = current_user.id if current_user else None
+    reporter_id = current_user.id
     violation = await ViolationService.create_violation(
         db=db,
         payload=payload,
@@ -126,9 +132,18 @@ async def transition_violation_status(
     violation_id: uuid.UUID,
     payload: ViolationStatusTransition,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(
+        require_role([
+            UserRole.SAFETY_OFFICER,
+            UserRole.COLLIERY_MANAGER,
+            UserRole.MANAGER,
+            UserRole.OVERMAN,
+            UserRole.CORPORATE_HQ,
+            UserRole.DGMS_INSPECTOR,
+        ])
+    ),
 ) -> ViolationResponse:
-    actor_id = current_user.id if current_user else None
+    actor_id = current_user.id
     updated = await ViolationService.transition_status(
         db=db,
         violation_id=violation_id,
@@ -151,6 +166,7 @@ async def get_audit_ledger(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
 ) -> List[AuditLedgerRead]:
     stmt = (
         select(AuditLedger)
@@ -171,6 +187,7 @@ async def get_audit_ledger(
 )
 async def verify_audit_chain(
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
 ) -> AuditIntegrityResponse:
     result = await HashChainService.verify_audit_integrity(db)
     return AuditIntegrityResponse(**result)
@@ -186,5 +203,13 @@ async def verify_audit_chain(
 )
 async def trigger_sla_sweep(
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(
+        require_role([
+            UserRole.SAFETY_OFFICER,
+            UserRole.COLLIERY_MANAGER,
+            UserRole.MANAGER,
+            UserRole.CORPORATE_HQ,
+        ])
+    ),
 ):
     return await execute_sla_escalation_sweep(db)

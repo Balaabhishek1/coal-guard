@@ -248,3 +248,21 @@ async def seed_data(db_session: AsyncSession):
         "inactive_miner": inactive_miner,
         "contractor": contractor,
     }
+
+
+@pytest_asyncio.fixture(scope="function")
+async def auth_headers(seed_data: dict):
+    """Provides valid JWT Bearer authorization headers for test roles."""
+    from app.core.security import create_access_token
+
+    manager = seed_data["manager"]
+    safety_officer = seed_data["safety_officer"]
+    overman = seed_data["overman"]
+    miner = seed_data["eligible_miner"]
+
+    return {
+        "manager": {"Authorization": f"Bearer {create_access_token({'sub': str(manager.id), 'role': manager.role})}"},
+        "safety_officer": {"Authorization": f"Bearer {create_access_token({'sub': str(safety_officer.id), 'role': safety_officer.role})}"},
+        "overman": {"Authorization": f"Bearer {create_access_token({'sub': str(overman.id), 'role': overman.role})}"},
+        "miner": {"Authorization": f"Bearer {create_access_token({'sub': str(miner.id), 'role': miner.role})}"},
+    }

@@ -11,7 +11,7 @@ import logging
 from typing import Any, Dict, List, Optional
 import uuid
 
-from sqlalchemy import desc, select
+from sqlalchemy import desc, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.governance import AuditLedger
@@ -73,6 +73,14 @@ class HashChainService:
     ) -> AuditLedger:
         """Appends a new cryptographically chained transaction record to the audit ledger."""
         now = datetime.now(timezone.utc)
+
+        # 0. Serialize concurrent ledger writes with transaction advisory lock if PostgreSQL
+        try:
+            bind = db.get_bind()
+            if bind and getattr(bind.dialect, "name", "") == "postgresql":
+                await db.execute(text("SELECT pg_advisory_xact_lock(74291)"))
+        except Exception as lock_err:
+            logger.debug(f"[AUDIT LOCK] Concurrency lock check skipped: {lock_err}")
 
         # 1. Fetch latest record to retrieve previous hash
         latest_stmt = (

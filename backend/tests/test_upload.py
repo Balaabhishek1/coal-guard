@@ -16,10 +16,12 @@ from app.models.sync_log import InspectionEvidence
 
 
 @pytest.mark.asyncio
-async def test_chunked_upload_full_lifecycle(client: AsyncClient, db_session: AsyncSession):
+async def test_chunked_upload_full_lifecycle(
+    client: AsyncClient, db_session: AsyncSession, auth_headers: dict
+):
     """Verifies complete upload lifecycle: init -> chunk 0 -> chunk 1 -> chunk 2 -> final assembly."""
-    chunk_0_data = b"RIFF" + b"\x00" * 496      # 500 bytes
-    chunk_1_data = b"WEBPVP8 " + b"\x01" * 492  # 500 bytes
+    chunk_0_data = b"RIFF\xd4\x05\x00\x00WEBPVP8 " + b"\x00" * 484  # 500 bytes (valid WebP RIFF/WEBP magic bytes)
+    chunk_1_data = b"\x01" * 500                # 500 bytes
     chunk_2_data = b"\x02" * 500                # 500 bytes
     total_bytes = len(chunk_0_data) + len(chunk_1_data) + len(chunk_2_data)  # 1500 bytes
 
@@ -29,18 +31,24 @@ async def test_chunked_upload_full_lifecycle(client: AsyncClient, db_session: As
         "total_chunks": 3,
         "file_size_bytes": total_bytes,
     }
-    init_res = await client.post("/api/v1/sync/upload-evidence/init", json=init_payload)
+    init_res = await client.post(
+        "/api/v1/sync/upload-evidence/init",
+        json=init_payload,
+        headers=auth_headers["overman"],
+    )
     assert init_res.status_code == 201
     init_data = init_res.json()
     upload_token = init_data["upload_token"]
     assert init_data["total_chunks"] == 3
+
+    put_headers = {"Content-Type": "application/octet-stream", **auth_headers["overman"]}
 
     # 2. Upload Chunk 0
     c0_res = await client.put(
         f"/api/v1/sync/upload-evidence/{upload_token}/chunk",
         params={"chunk_index": 0},
         content=chunk_0_data,
-        headers={"Content-Type": "application/octet-stream"},
+        headers=put_headers,
     )
     assert c0_res.status_code == 200
     c0_data = c0_res.json()
@@ -52,7 +60,7 @@ async def test_chunked_upload_full_lifecycle(client: AsyncClient, db_session: As
         f"/api/v1/sync/upload-evidence/{upload_token}/chunk",
         params={"chunk_index": 1},
         content=chunk_1_data,
-        headers={"Content-Type": "application/octet-stream"},
+        headers=put_headers,
     )
     assert c1_res.status_code == 200
     c1_data = c1_res.json()
@@ -64,7 +72,7 @@ async def test_chunked_upload_full_lifecycle(client: AsyncClient, db_session: As
         f"/api/v1/sync/upload-evidence/{upload_token}/chunk",
         params={"chunk_index": 2},
         content=chunk_2_data,
-        headers={"Content-Type": "application/octet-stream"},
+        headers=put_headers,
     )
     assert c2_res.status_code == 200
     c2_data = c2_res.json()
@@ -97,11 +105,22 @@ async def test_chunked_upload_full_lifecycle(client: AsyncClient, db_session: As
 
 
 @pytest.mark.asyncio
-async def test_chunked_upload_invalid_chunk_index(client: AsyncClient):
+async def test_unauthenticated_chunked_upload_denied(client: AsyncClient):
+    """Verifies that unauthenticated chunk initialization is rejected with HTTP 401."""
+    init_res = await client.post(
+        "/api/v1/sync/upload-evidence/init",
+        json={"file_name": "unauth.webp", "total_chunks": 1, "file_size_bytes": 100},
+    )
+    assert init_res.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_chunked_upload_invalid_chunk_index(client: AsyncClient, auth_headers: dict):
     """Verifies that out-of-bounds chunk index returns HTTP 400."""
     init_res = await client.post(
         "/api/v1/sync/upload-evidence/init",
         json={"file_name": "test.webp", "total_chunks": 2, "file_size_bytes": 100},
+        headers=auth_headers["overman"],
     )
     upload_token = init_res.json()["upload_token"]
 
@@ -110,27 +129,30 @@ async def test_chunked_upload_invalid_chunk_index(client: AsyncClient):
         f"/api/v1/sync/upload-evidence/{upload_token}/chunk",
         params={"chunk_index": 5},
         content=b"invalid_chunk",
+        headers={"Content-Type": "application/octet-stream", **auth_headers["overman"]},
     )
     assert res.status_code == 400
 
 
 @pytest.mark.asyncio
-async def test_chunked_upload_invalid_upload_token(client: AsyncClient):
+async def test_chunked_upload_invalid_upload_token(client: AsyncClient, auth_headers: dict):
     """Verifies that invalid or expired upload tokens return HTTP 404."""
     res = await client.put(
         "/api/v1/sync/upload-evidence/non_existent_token_999/chunk",
         params={"chunk_index": 0},
         content=b"test_chunk",
+        headers={"Content-Type": "application/octet-stream", **auth_headers["overman"]},
     )
     assert res.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_chunked_upload_empty_body_fails(client: AsyncClient):
+async def test_chunked_upload_empty_body_fails(client: AsyncClient, auth_headers: dict):
     """Verifies that empty chunk byte payloads return HTTP 400."""
     init_res = await client.post(
         "/api/v1/sync/upload-evidence/init",
         json={"file_name": "test_empty.webp", "total_chunks": 1, "file_size_bytes": 50},
+        headers=auth_headers["overman"],
     )
     upload_token = init_res.json()["upload_token"]
 
@@ -138,5 +160,6 @@ async def test_chunked_upload_empty_body_fails(client: AsyncClient):
         f"/api/v1/sync/upload-evidence/{upload_token}/chunk",
         params={"chunk_index": 0},
         content=b"",
+        headers={"Content-Type": "application/octet-stream", **auth_headers["overman"]},
     )
     assert res.status_code == 400

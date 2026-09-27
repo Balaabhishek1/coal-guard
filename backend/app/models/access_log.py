@@ -64,6 +64,11 @@ class AccessAttemptLog(Base):
         nullable=False,
         default=False,
     )
+    direction: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        default="INGRESS",
+    )
     wear_states: Mapped[dict] = mapped_column(
         JSON().with_variant(JSONB, "postgresql"),
         nullable=False,

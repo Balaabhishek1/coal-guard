@@ -129,8 +129,17 @@ async def test_resolved_violations_not_escalated(db_session: AsyncSession, locat
 
 
 @pytest.mark.asyncio
-async def test_manual_sla_sweep_endpoint(client: AsyncClient, location_fixture: MineLocation, db_session: AsyncSession):
-    """Verifies the HTTP endpoint /api/v1/governance/sla/sweep triggers the escalation check."""
+async def test_manual_sla_sweep_endpoint(
+    client: AsyncClient,
+    location_fixture: MineLocation,
+    db_session: AsyncSession,
+    auth_headers: dict,
+):
+    """Verifies the HTTP endpoint /api/v1/governance/sla/sweep triggers the escalation check when authenticated."""
+    # First verify unauthenticated attempt is rejected
+    unauth_res = await client.post("/api/v1/governance/sla/sweep")
+    assert unauth_res.status_code == 401
+
     now = datetime.now(timezone.utc)
     v = ComplianceViolation(
         id=uuid.uuid4(),
@@ -145,7 +154,10 @@ async def test_manual_sla_sweep_endpoint(client: AsyncClient, location_fixture: 
     db_session.add(v)
     await db_session.commit()
 
-    response = await client.post("/api/v1/governance/sla/sweep")
+    response = await client.post(
+        "/api/v1/governance/sla/sweep",
+        headers=auth_headers["safety_officer"],
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "COMPLETED"

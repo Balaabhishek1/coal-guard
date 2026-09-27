@@ -8,9 +8,11 @@ and statutory SLA escalations.
 from datetime import datetime, timezone
 import json
 import logging
+from typing import Optional
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect, status
 
+from app.core.security import decode_access_token
 from app.core.ws_manager import MONITORED_CHANNELS, ws_manager
 
 logger = logging.getLogger("coalguard.websocket")
@@ -19,15 +21,24 @@ router = APIRouter(prefix="/ws", tags=["Control Room WebSockets"])
 
 
 @router.websocket("/control-room")
-async def control_room_websocket_endpoint(websocket: WebSocket):
+async def control_room_websocket_endpoint(
+    websocket: WebSocket,
+    token: Optional[str] = Query(None),
+):
     """Full-duplex real-time stream for the React Control Room HUD.
 
+    Requires valid JWT token in query param.
     Dispatches:
     - GATE_ACCESS_ATTEMPT: Optical & RFID actuation logs from pithead turnstiles.
     - GAS_SPIKE_ALERT: Statutory threshold interlocks (CH4 trips, CO heating).
     - HARDWARE_OFFLINE: Telemetry disconnects and camera failures.
     - GOVERNANCE_ESCALATION: SLA deadline breaches and auto-escalations.
     """
+    if not token or not decode_access_token(token):
+        logger.warning("[WS] Unauthorized WebSocket connection attempt rejected")
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
     await ws_manager.connect(websocket)
 
     # Initial handshake frame

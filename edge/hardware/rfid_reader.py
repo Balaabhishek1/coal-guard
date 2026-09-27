@@ -71,10 +71,16 @@ class RfidReader:
             # 1. Check for physical serial badge data
             if self._serial is not None and self._serial.is_open:
                 try:
-                    line = self._serial.readline().decode("utf-8", errors="ignore").strip()
-                    if line:
-                        logger.info("[RfidReader] Physical badge detected: %s", line)
-                        self._dispatch_tag(line)
+                    raw_bytes = self._serial.readline()
+                    if raw_bytes:
+                        # Strip common STX (0x02), ETX (0x03), CR, LF, and null padding
+                        cleaned = raw_bytes.strip(b"\x02\x03\r\n\x00")
+                        line = cleaned.decode("utf-8", errors="ignore").strip()
+                        if "Card UID:" in line:
+                            line = line.replace("Card UID:", "").replace(" ", "").strip()
+                        if line:
+                            logger.info("[RfidReader] Physical badge detected: %s", line)
+                            self._dispatch_tag(line)
                 except Exception as exc:
                     logger.error("[RfidReader] Serial read exception: %s", exc)
                     time.sleep(0.5)

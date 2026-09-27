@@ -5,6 +5,9 @@ import { useAuthStore } from "@/store/auth-store";
 import ProtectedRoute from "@/components/protected-route";
 import MainLayout from "@/layouts/main-layout";
 import LoginPage from "@/features/auth/pages/login-page";
+import LandingPage from "@/pages/landing-page";
+import TermsPage from "@/pages/terms-page";
+import PrivacyPage from "@/pages/privacy-page";
 import DashboardPage from "@/pages/dashboard-page";
 import UnauthorizedPage from "@/pages/unauthorized-page";
 import WorkspacePlaceholder from "@/pages/workspace-placeholder";
@@ -59,14 +62,17 @@ export const App: React.FC = () => {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
-          {/* Public Routes */}
+          {/* Public Statutory & Product Routes */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
           {/* Protected Shell Layout */}
           <Route element={<ProtectedRoute />}>
             <Route element={<MainLayout />}>
-              <Route path="/" element={<RootRedirect />} />
+              <Route path="/app" element={<RootRedirect />} />
               <Route path="/dashboard" element={<DashboardPage />} />
 
               {/* Safety Officer & Gate Operator Workspace */}

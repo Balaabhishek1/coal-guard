@@ -14,6 +14,14 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("edge.hardware.turnstile_relay")
 
+# Try to import physical GPIO support if on physical embedded hardware
+try:
+    import RPi.GPIO as GPIO  # type: ignore
+    GPIO_AVAILABLE = True
+except (ImportError, RuntimeError):
+    GPIO = None
+    GPIO_AVAILABLE = False
+
 
 class TurnstileRelayController:
     """Hardware Relay and Optical Indicator Controller."""
@@ -30,13 +38,32 @@ class TurnstileRelayController:
         self.green_led_pin = green_led_pin
         self.red_led_pin = red_led_pin
         self.pulse_duration = pulse_duration
-        self.simulation_mode = simulation_mode
+        self.simulation_mode = simulation_mode or not GPIO_AVAILABLE
 
         self._is_unlocked = False
         self._led_state = "OFF"  # 'OFF', 'GREEN', 'RED_ALARM'
         self._lock = threading.Lock()
         self._active_pulse_timer: Optional[threading.Timer] = None
         self._history: List[Dict[str, Any]] = []
+
+        if not self.simulation_mode and GPIO_AVAILABLE and GPIO is not None:
+            try:
+                GPIO.setmode(GPIO.BCM)
+                for pin in (self.relay_pin, self.green_led_pin, self.red_led_pin):
+                    if pin is not None:
+                        GPIO.setup(pin, GPIO.OUT, initial=GPIO.LOW)
+                logger.info(
+                    "[TurnstileRelay] Physical GPIO initialized on pins (relay=%s, green=%s, red=%s)",
+                    self.relay_pin,
+                    self.green_led_pin,
+                    self.red_led_pin,
+                )
+            except Exception as gpio_exc:
+                logger.warning(
+                    "[TurnstileRelay] Failed to initialize physical GPIO: %s. Falling back to simulation.",
+                    gpio_exc,
+                )
+                self.simulation_mode = True
 
     @property
     def is_unlocked(self) -> bool:
@@ -74,6 +101,18 @@ class TurnstileRelayController:
             if unlock:
                 self._is_unlocked = True
                 self._led_state = "GREEN"
+
+                if not self.simulation_mode and GPIO_AVAILABLE and GPIO is not None:
+                    try:
+                        if self.relay_pin is not None:
+                            GPIO.output(self.relay_pin, GPIO.HIGH)
+                        if self.green_led_pin is not None:
+                            GPIO.output(self.green_led_pin, GPIO.HIGH)
+                        if self.red_led_pin is not None:
+                            GPIO.output(self.red_led_pin, GPIO.LOW)
+                    except Exception as e:
+                        logger.error("[TurnstileRelay] Error driving physical GPIO pins: %s", e)
+
                 logger.info(
                     "[TurnstileRelay] ACCESS GRANTED: Solenoid relay ENERGIZED (UNLOCKED). "
                     "Green LED ACTIVE for %.1f seconds.",
@@ -96,6 +135,18 @@ class TurnstileRelayController:
             else:
                 self._is_unlocked = False
                 self._led_state = "RED_ALARM"
+
+                if not self.simulation_mode and GPIO_AVAILABLE and GPIO is not None:
+                    try:
+                        if self.relay_pin is not None:
+                            GPIO.output(self.relay_pin, GPIO.LOW)
+                        if self.green_led_pin is not None:
+                            GPIO.output(self.green_led_pin, GPIO.LOW)
+                        if self.red_led_pin is not None:
+                            GPIO.output(self.red_led_pin, GPIO.HIGH)
+                    except Exception as e:
+                        logger.error("[TurnstileRelay] Error driving physical GPIO pins: %s", e)
+
                 logger.warning(
                     "[TurnstileRelay] ACCESS DENIED: Gate remains LOCKED. Red statutory alarm LED FLASHING."
                 )
@@ -118,6 +169,14 @@ class TurnstileRelayController:
         with self._lock:
             self._is_unlocked = False
             self._led_state = "OFF"
+            if not self.simulation_mode and GPIO_AVAILABLE and GPIO is not None:
+                try:
+                    if self.relay_pin is not None:
+                        GPIO.output(self.relay_pin, GPIO.LOW)
+                    if self.green_led_pin is not None:
+                        GPIO.output(self.green_led_pin, GPIO.LOW)
+                except Exception as e:
+                    logger.error("[TurnstileRelay] Error clearing green GPIO pins: %s", e)
             logger.info("[TurnstileRelay] Solenoid relay DE-ENERGIZED (LOCKED). Green LED OFF.")
 
     def _clear_alarm(self) -> None:
@@ -125,6 +184,12 @@ class TurnstileRelayController:
         with self._lock:
             if self._led_state == "RED_ALARM":
                 self._led_state = "OFF"
+                if not self.simulation_mode and GPIO_AVAILABLE and GPIO is not None:
+                    try:
+                        if self.red_led_pin is not None:
+                            GPIO.output(self.red_led_pin, GPIO.LOW)
+                    except Exception as e:
+                        logger.error("[TurnstileRelay] Error clearing red GPIO pin: %s", e)
                 logger.info("[TurnstileRelay] Red alarm LED cleared.")
 
     def emergency_lockdown(self) -> None:
@@ -134,6 +199,16 @@ class TurnstileRelayController:
                 self._active_pulse_timer.cancel()
             self._is_unlocked = False
             self._led_state = "RED_ALARM"
+            if not self.simulation_mode and GPIO_AVAILABLE and GPIO is not None:
+                try:
+                    if self.relay_pin is not None:
+                        GPIO.output(self.relay_pin, GPIO.LOW)
+                    if self.green_led_pin is not None:
+                        GPIO.output(self.green_led_pin, GPIO.LOW)
+                    if self.red_led_pin is not None:
+                        GPIO.output(self.red_led_pin, GPIO.HIGH)
+                except Exception as e:
+                    logger.error("[TurnstileRelay] Error triggering emergency lockdown GPIO: %s", e)
             logger.critical("[TurnstileRelay] EMERGENCY LOCKDOWN TRIGGERED. Turnstiles permanently locked.")
 
     def close(self) -> None:
@@ -143,3 +218,8 @@ class TurnstileRelayController:
                 self._active_pulse_timer.cancel()
             self._is_unlocked = False
             self._led_state = "OFF"
+            if not self.simulation_mode and GPIO_AVAILABLE and GPIO is not None:
+                try:
+                    GPIO.cleanup()
+                except Exception:
+                    pass

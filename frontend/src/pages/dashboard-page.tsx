@@ -1,668 +1,1234 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
-  AlertTriangle,
-  ChevronDown,
-  Compass,
+  Layers,
+  RefreshCw,
+  Download,
+  ChevronRight,
+  ChevronLeft,
+  Activity,
   Crosshair,
-  ExternalLink,
-  Fuel,
-  Minus,
-  Plus,
+  ZoomIn,
+  ZoomOut,
   RotateCcw,
-  ShieldCheck,
-  SlidersHorizontal,
-  Truck,
+  Shield,
   Wind,
-  X,
+  Truck,
+  Users,
+  AlertTriangle,
+  Server,
+  FileText,
+  Clock,
+  ExternalLink,
+  Radio,
+  Compass,
 } from "lucide-react";
-import { useThemeStore } from "@/store/theme-store";
 
-interface VehicleAsset {
+// Asset data types
+export interface CollieryAsset {
   id: string;
-  name: string;
   code: string;
-  type: string;
-  status: "Active" | "Idle" | "Maintenance" | "Offline";
-  driver: string;
-  from: string;
-  to: string;
-  progressPercent: number;
-  totalDistance: string;
-  eta: string;
-  distanceRemaining: string;
-  speedMph: number;
-  fuelGal: string;
-  fuelPercent: number;
-  alert?: string;
-  coords: { x: number; y: number };
+  name: string;
+  category: "HAULAGE" | "PERSONNEL" | "SENSOR" | "GATEWAY";
+  status: "NORMAL" | "CAUTION" | "ALARM";
+  zone: string;
+  seam: string;
+  seamId: "SURFACE" | "SEAM_I" | "SEAM_II" | "SEAM_III" | "SEAM_IV";
+  elevationMsl: number;
+  coordinates: { x: number; y: number; lat: string; lon: string };
+  speedKmh: number;
+  payloadTons?: number;
+  batteryPct: number;
+  operator?: string;
+  lastPingSec: number;
+  telemetryNote: string;
+  gasCh4Pct?: number;
+  actionRoute: string;
+  actionLabel: string;
 }
 
-const VEHICLES: VehicleAsset[] = [
+export const COLLIERY_ASSETS: CollieryAsset[] = [
   {
-    id: "v-1",
-    name: "Volvo FH16",
-    code: "TK-4821-HX",
-    type: "Heavy Coal Hauler",
-    status: "Active",
-    driver: "Lina Nguyen (Operator)",
-    from: "Dallas, TX",
-    to: "Memphis, TN",
-    progressPercent: 72,
-    totalDistance: "282.7 mi",
-    eta: "~1h 8m",
-    distanceRemaining: "72.8 mi distance remaining",
-    speedMph: 55,
-    fuelGal: "1.17 gal",
-    fuelPercent: 78,
-    alert: "Required Break: 24 min (After 4h of driving)",
-    coords: { x: 52, y: 72 },
+    id: "AST-777D-04",
+    code: "CAT-777D #04",
+    name: "Caterpillar 777D Off-Highway Dumper",
+    category: "HAULAGE",
+    status: "NORMAL",
+    zone: "West Incline Haul Road",
+    seam: "Seam III Horizon",
+    seamId: "SEAM_III",
+    elevationMsl: -184.2,
+    coordinates: { x: 380, y: 310, lat: "23° 47' 14.2\" N", lon: "86° 24' 36.1\" E" },
+    speedKmh: 24,
+    payloadTons: 91.4,
+    batteryPct: 88,
+    operator: "R. Soren (Heavy Driver Grade I)",
+    lastPingSec: 1,
+    telemetryNote: "In transit from Face 3 to Pithead Bunker. Payload verified by weighbridge sensor.",
+    actionRoute: "/gate-hud",
+    actionLabel: "Verify Weighbridge Gate Log",
   },
   {
-    id: "v-2",
-    name: "Scania G440",
-    code: "TK-1092-B",
-    type: "Pit Hauler Shuttle",
-    status: "Active",
-    driver: "Manoj Verma",
-    from: "Pithead 04",
-    to: "Coal Washery 02",
-    progressPercent: 45,
-    totalDistance: "14.2 km",
-    eta: "~25m",
-    distanceRemaining: "7.8 km remaining",
-    speedMph: 38,
-    fuelGal: "4.20 gal",
-    fuelPercent: 88,
-    coords: { x: 32, y: 78 },
+    id: "AST-HD785-02",
+    code: "KOMATSU HD785 #02",
+    name: "Komatsu HD785 Mining Hauler",
+    category: "HAULAGE",
+    status: "NORMAL",
+    zone: "Central Sump Haul Road",
+    seam: "Seam III Horizon",
+    seamId: "SEAM_III",
+    elevationMsl: -192.5,
+    coordinates: { x: 540, y: 390, lat: "23° 47' 11.8\" N", lon: "86° 24' 42.4\" E" },
+    speedKmh: 18,
+    payloadTons: 88.0,
+    batteryPct: 76,
+    operator: "M. K. Verma (Driver)",
+    lastPingSec: 2,
+    telemetryNote: "Ascending 1:4 incline gradient. Engine telemetry and brake temperatures normal.",
+    actionRoute: "/hardware-matrix",
+    actionLabel: "Inspect Diagnostic Telemetry",
   },
   {
-    id: "v-3",
-    name: "Komatsu HD785",
-    code: "TK-3301-A",
-    type: "Surface Dumper",
-    status: "Idle",
-    driver: "Rajesh Murmu",
-    from: "Stockpile East",
-    to: "Rail Loading Silo",
-    progressPercent: 95,
-    totalDistance: "6.5 km",
-    eta: "~4m",
-    distanceRemaining: "0.3 km remaining",
-    speedMph: 0,
-    fuelGal: "2.80 gal",
-    fuelPercent: 62,
-    coords: { x: 65, y: 42 },
+    id: "AST-SCN-08",
+    code: "SCANIA G440 #08",
+    name: "Scania G440 Tipper Shuttle",
+    category: "HAULAGE",
+    status: "CAUTION",
+    zone: "Seam IV Development Drift",
+    seam: "Seam IV Basal",
+    seamId: "SEAM_IV",
+    elevationMsl: -245.0,
+    coordinates: { x: 710, y: 440, lat: "23° 47' 08.5\" N", lon: "86° 24' 49.2\" E" },
+    speedKmh: 12,
+    payloadTons: 42.5,
+    batteryPct: 62,
+    operator: "A. P. Murmu (Operator)",
+    lastPingSec: 3,
+    telemetryNote: "Speed restricted to 15 km/h in development gallery under CMR Reg 171. Proximity warning flagged.",
+    actionRoute: "/governance/remediation",
+    actionLabel: "Raise SLA Remediation Ticket",
   },
   {
-    id: "v-4",
-    name: "Caterpillar 777G",
-    code: "TK-7719-M",
-    type: "Strata Support Rig",
-    status: "Maintenance",
-    driver: "Technician Bay",
-    from: "Workshop 3",
-    to: "Standby",
-    progressPercent: 0,
-    totalDistance: "0.0 km",
-    eta: "Service",
-    distanceRemaining: "Bay 4 Inspection",
-    speedMph: 0,
-    fuelGal: "0.90 gal",
-    fuelPercent: 40,
-    alert: "Brake Lining & Hydraulic Pressure Calibration",
-    coords: { x: 78, y: 68 },
+    id: "AST-SDL-01",
+    code: "EIMCO SDL #01",
+    name: "Side Discharge Loader Tracked",
+    category: "HAULAGE",
+    status: "NORMAL",
+    zone: "Longwall 3 Transfer Chute",
+    seam: "Seam III Horizon",
+    seamId: "SEAM_III",
+    elevationMsl: -184.0,
+    coordinates: { x: 260, y: 220, lat: "23° 47' 18.0\" N", lon: "86° 24' 28.5\" E" },
+    speedKmh: 4,
+    payloadTons: 12.0,
+    batteryPct: 94,
+    operator: "T. C. Kisku (SDL Op)",
+    lastPingSec: 1,
+    telemetryNote: "Active loading into armored face conveyor. Strata clearance verified.",
+    actionRoute: "/hardware-matrix",
+    actionLabel: "View Equipment Health",
+  },
+  {
+    id: "AST-CREW-BRAVO",
+    code: "CREW-B (14 Pers)",
+    name: "Underground Roof Bolting Gang",
+    category: "PERSONNEL",
+    status: "NORMAL",
+    zone: "West Return Airway 4",
+    seam: "Seam III Horizon",
+    seamId: "SEAM_III",
+    elevationMsl: -184.2,
+    coordinates: { x: 440, y: 190, lat: "23° 47' 16.5\" N", lon: "86° 24' 34.0\" E" },
+    speedKmh: 0,
+    batteryPct: 99,
+    operator: "Overman S. Hansda",
+    lastPingSec: 1,
+    telemetryNote: "14 cap-lamp transponders active. Biometric muster verified at portal. CMR Form IV logged.",
+    actionRoute: "/field-ops/form-iv",
+    actionLabel: "Inspect Form IV Shift Diary",
+  },
+  {
+    id: "AST-GAS-WS08",
+    code: "CH4/CO NODE WS-08",
+    name: "Trolex Sentro 8 Telemetry Beacon",
+    category: "SENSOR",
+    status: "CAUTION",
+    zone: "Return Airway Split 2",
+    seam: "Seam III Horizon",
+    seamId: "SEAM_III",
+    elevationMsl: -186.0,
+    coordinates: { x: 620, y: 240, lat: "23° 47' 13.9\" N", lon: "86° 24' 45.1\" E" },
+    speedKmh: 0,
+    batteryPct: 100,
+    lastPingSec: 1,
+    gasCh4Pct: 0.82,
+    telemetryNote: "CH4: 0.82% (Advisory threshold 0.75%). Air velocity: 1.84 m/s. Statutory trip threshold is 1.25%.",
+    actionRoute: "/telemetry",
+    actionLabel: "View Gas Trends in TimescaleDB",
+  },
+  {
+    id: "AST-GATE-01",
+    code: "CMR-169 OPTICAL GATE",
+    name: "Pithead Inbye Portal Scanner",
+    category: "GATEWAY",
+    status: "NORMAL",
+    zone: "Surface Collar Portal",
+    seam: "Surface 0m",
+    seamId: "SURFACE",
+    elevationMsl: 0.0,
+    coordinates: { x: 180, y: 460, lat: "23° 47' 21.0\" N", lon: "86° 24' 18.0\" E" },
+    speedKmh: 0,
+    batteryPct: 100,
+    lastPingSec: 1,
+    telemetryNote: "Turnstiles active. Dual Hikvision ATEX thermal cameras operational. 142 miners cleared today.",
+    actionRoute: "/gate-hud",
+    actionLabel: "Launch Pithead Gate HUD",
   },
 ];
 
 export const DashboardPage: React.FC = () => {
-  const { theme } = useThemeStore();
-  const isDark = theme === "dark";
+  const navigate = useNavigate();
 
-  const [activeFilter, setActiveFilter] = useState<string>("All");
-  const [showRoutes, setShowRoutes] = useState<boolean>(true);
-  const [showAlerts, setShowAlerts] = useState<boolean>(true);
-  const [selectedAsset, setSelectedAsset] = useState<VehicleAsset>(VEHICLES[0]);
-  const [cardMinimized, setCardMinimized] = useState<boolean>(false);
-  const [mapZoom, setMapZoom] = useState<number>(100);
+  // Operational Mode Switcher (Active filter tab)
+  const [operationalMode, setOperationalMode] = useState<
+    "ALL" | "PERSONNEL" | "GAS" | "HAULAGE" | "VENTILATION"
+  >("ALL");
 
-  const filteredAssets = VEHICLES.filter((v) => {
-    if (activeFilter === "All") return true;
-    return v.status === activeFilter;
+  // Seam Horizon Depth Filter
+  const [selectedSeam, setSelectedSeam] = useState<string>("ALL");
+
+  // CMR 2017 Gas Safety Threshold Filter
+  const [gasThresholdFilter, setGasThresholdFilter] = useState<"ALL" | "ADVISORY" | "TRIP">("ALL");
+
+  // Dock toggles
+  const [leftDockOpen, setLeftDockOpen] = useState(true);
+  const [rightDockOpen, setRightDockOpen] = useState(true);
+
+  // Map state
+  const [mapZoom, setMapZoom] = useState(100);
+  const [mapPan, setMapPan] = useState({ x: 0, y: 0 });
+  const [is3DMode, setIs3DMode] = useState(false);
+  const [selectedAsset, setSelectedAsset] = useState<CollieryAsset>(COLLIERY_ASSETS[0]);
+  const [hoveredCoords, setHoveredCoords] = useState<{
+    x: number;
+    y: number;
+    lat: string;
+    lon: string;
+    elevation: string;
+  } | null>(null);
+
+  // Layer Visibility
+  const [layerFleet, setLayerFleet] = useState(true);
+  const [layerTransponders, setLayerTransponders] = useState(true);
+  const [layerGateways, setLayerGateways] = useState(true);
+  const [layerSensors, setLayerSensors] = useState(true);
+  const [layerFaults, setLayerFaults] = useState(true);
+  const [layerEscapeways, setLayerEscapeways] = useState(true);
+
+  // Loading / Skeleton State
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Telemetry refresh simulation
+  const triggerTelemetryRefresh = () => {
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 700);
+  };
+
+  // Improved GeoJSON Export
+  const handleExportGeoJSON = () => {
+    const geojson = {
+      type: "FeatureCollection",
+      colliery: "BCCL Dhanbad Area IX - Mine Shaft 04",
+      statutoryReference: "CMR-2017 Regulations 169 & 182",
+      timestamp: new Date().toISOString(),
+      crs: {
+        type: "name",
+        properties: { name: "urn:ogc:def:crs:EPSG::32645" },
+      },
+      features: COLLIERY_ASSETS.map((asset) => ({
+        type: "Feature",
+        id: asset.id,
+        geometry: {
+          type: "Point",
+          coordinates: [86.4099, 23.7867, asset.elevationMsl],
+        },
+        properties: {
+          code: asset.code,
+          name: asset.name,
+          category: asset.category,
+          status: asset.status,
+          zone: asset.zone,
+          seam: asset.seam,
+          elevationMsl: asset.elevationMsl,
+          speedKmh: asset.speedKmh,
+          payloadTons: asset.payloadTons || 0,
+          gasCh4Pct: asset.gasCh4Pct || null,
+          operator: asset.operator || "Autonomous / Static Sensor",
+        },
+      })),
+    };
+
+    const blob = new Blob([JSON.stringify(geojson, null, 2)], {
+      type: "application/geo+json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `coalguard-colliery-spatial-layers-${Date.now()}.geojson`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Filter assets based on Operational Mode, Seam Horizon, and Gas Threshold
+  const filteredAssets = COLLIERY_ASSETS.filter((asset) => {
+    // 1. Operational Mode filter
+    if (operationalMode === "PERSONNEL" && asset.category !== "PERSONNEL") return false;
+    if (operationalMode === "GAS" && asset.category !== "SENSOR") return false;
+    if (operationalMode === "HAULAGE" && asset.category !== "HAULAGE") return false;
+    if (operationalMode === "VENTILATION" && asset.category !== "SENSOR" && asset.category !== "GATEWAY") return false;
+
+    // 2. Seam Horizon filter
+    if (selectedSeam !== "ALL" && asset.seamId !== selectedSeam) return false;
+
+    // 3. Gas threshold filter
+    if (gasThresholdFilter === "ADVISORY" && (asset.gasCh4Pct || 0) < 0.75) return false;
+    if (gasThresholdFilter === "TRIP" && (asset.gasCh4Pct || 0) < 1.25) return false;
+
+    // 4. Layer visibility toggles
+    if (asset.category === "HAULAGE" && !layerFleet) return false;
+    if (asset.category === "PERSONNEL" && !layerTransponders) return false;
+    if (asset.category === "GATEWAY" && !layerGateways) return false;
+    if (asset.category === "SENSOR" && !layerSensors) return false;
+
+    return true;
   });
 
+  // Canvas map mouse tracker
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.round(e.clientX - rect.left);
+    const y = Math.round(e.clientY - rect.top);
+    const latSec = (14.2 + (y / 600) * 8.5).toFixed(1);
+    const lonSec = (36.1 + (x / 900) * 16.4).toFixed(1);
+    const elevation = (-184.2 + ((y - 300) / 300) * 60).toFixed(1);
+
+    setHoveredCoords({
+      x,
+      y,
+      lat: `23° 47' ${latSec}" N`,
+      lon: `86° 24' ${lonSec}" E`,
+      elevation: `${elevation} m MSL`,
+    });
+  };
+
   return (
-    <div className="space-y-4 max-w-[1600px] mx-auto">
-      {/* Operations Dashboard Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-            Operations Dashboard
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
-            Tuesday, April 9, 2024 • Real-time overview
-          </p>
-        </div>
+    <div className="flex flex-col space-y-2 max-w-[1720px] mx-auto select-none">
+      {/* Top Header / Operational Mode Switcher Bar */}
+      <div className="bg-[#0b0e14] border border-[#1b2230] p-2 rounded-sm flex flex-col md:flex-row md:items-center justify-between gap-2 text-xs">
+        {/* Left: Breadcrumbs & Active Shift Ribbon */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="flex items-center gap-1.5 text-slate-400 font-mono text-[11px]">
+            <Link to="/dashboard" className="text-slate-300 hover:text-white transition-colors">
+              Colliery C2
+            </Link>
+            <span>/</span>
+            <span className="text-amber-400 font-semibold">GIS Operations Dashboard</span>
+          </div>
 
-        {/* Time Filter Pill */}
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <button className="h-8 px-3.5 rounded-full bg-white dark:bg-[#161822] hover:bg-slate-100 dark:hover:bg-[#1f2230] border border-slate-200 dark:border-white/[0.08] text-xs text-slate-700 dark:text-zinc-200 font-medium flex items-center gap-1.5 transition-colors shadow-sm dark:shadow-none">
-            <span>Last 7 Days</span>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-400" />
-          </button>
-        </div>
-      </div>
+          <div className="h-4 w-px bg-[#1e2638] hidden sm:block" />
 
-      {/* Filter Tabs & Toggle Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-1">
-        {/* Filter Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-          {[
-            { label: "All", count: 12 },
-            { label: "Active", count: 8 },
-            { label: "Idle", count: 2 },
-            { label: "Maintenance", count: 1 },
-            { label: "Offline", count: 1 },
-          ].map((tab) => {
-            const isActive = activeFilter === tab.label;
-            return (
-              <button
-                key={tab.label}
-                onClick={() => setActiveFilter(tab.label)}
-                className={`h-7 px-3.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 shrink-0 ${
-                  isActive
-                    ? "bg-slate-900 text-white dark:bg-white dark:text-black shadow-sm font-semibold"
-                    : "bg-white dark:bg-[#161822] text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#1e212f] border border-slate-200 dark:border-white/[0.06]"
-                }`}
-              >
-                <span>{tab.label}</span>
-                <span
-                  className={`text-[11px] ${
-                    isActive ? "text-slate-300 dark:text-zinc-600" : "text-slate-400 dark:text-zinc-500"
+          {/* Active Shift Indicator */}
+          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-[#121824] border border-[#1f283d] text-[10px] font-mono text-emerald-400">
+            <Clock className="w-3 h-3 text-emerald-400" />
+            <span>SHIFT C: 22:00 - 06:00 (ACTIVE)</span>
+          </div>
+
+          {/* Operational Mode Filter Tabs */}
+          <div className="flex items-center gap-0.5 bg-[#101520] p-0.5 border border-[#1d2436] rounded-sm">
+            {[
+              { id: "ALL", label: "All Layers", count: COLLIERY_ASSETS.length, icon: Layers },
+              { id: "PERSONNEL", label: "Personnel Mustering", count: 142, icon: Users },
+              { id: "GAS", label: "Gas & Telemetry", count: 24, icon: Wind },
+              { id: "HAULAGE", label: "Haulage Fleet", count: 14, icon: Truck },
+              { id: "VENTILATION", label: "Ventilation Network", count: 4, icon: Radio },
+            ].map((tab) => {
+              const TabIcon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setOperationalMode(tab.id as typeof operationalMode)}
+                  className={`px-2 py-1 text-[11px] font-mono transition-colors flex items-center gap-1.5 rounded-none ${
+                    operationalMode === tab.id
+                      ? "bg-[#1f293d] text-white border border-[#2d3a54] font-medium"
+                      : "text-slate-400 hover:text-slate-200"
                   }`}
                 >
-                  {tab.count}
-                </span>
-              </button>
-            );
-          })}
-
-          <button
-            title="Custom Filter"
-            className="w-7 h-7 rounded-full bg-white dark:bg-[#161822] hover:bg-slate-100 dark:hover:bg-[#1e212f] border border-slate-200 dark:border-white/[0.06] flex items-center justify-center text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition-colors shrink-0 ml-0.5"
-          >
-            <SlidersHorizontal className="w-3 h-3" />
-          </button>
-        </div>
-
-        {/* Right Toggle Switches */}
-        <div className="flex items-center gap-4 text-xs text-slate-600 dark:text-zinc-300 select-none self-end md:self-auto">
-          {/* Show Routes Toggle */}
-          <label className="flex items-center gap-2 cursor-pointer">
-            <span className="text-slate-500 dark:text-zinc-400">Show routes</span>
-            <div
-              onClick={() => setShowRoutes(!showRoutes)}
-              className={`w-9 h-5 rounded-full transition-colors relative flex items-center p-0.5 ${
-                showRoutes ? "bg-emerald-500" : "bg-slate-300 dark:bg-[#252938]"
-              }`}
-            >
-              <div
-                className={`w-4 h-4 rounded-full bg-white transition-transform shadow-sm ${
-                  showRoutes ? "translate-x-4" : "translate-x-0"
-                }`}
-              />
-            </div>
-          </label>
-
-          {/* Show Alerts Toggle */}
-          <label className="flex items-center gap-2 cursor-pointer">
-            <span className="text-slate-500 dark:text-zinc-400">Show alerts</span>
-            <div
-              onClick={() => setShowAlerts(!showAlerts)}
-              className={`w-9 h-5 rounded-full transition-colors relative flex items-center p-0.5 ${
-                showAlerts ? "bg-emerald-500" : "bg-slate-300 dark:bg-[#252938]"
-              }`}
-            >
-              <div
-                className={`w-4 h-4 rounded-full bg-white transition-transform shadow-sm ${
-                  showAlerts ? "translate-x-4" : "translate-x-0"
-                }`}
-              />
-            </div>
-          </label>
-        </div>
-      </div>
-
-      {/* Main Spatial Operations Canvas with Floating Asset Card & Compass */}
-      <div className="relative w-full h-[620px] lg:h-[680px] rounded-3xl bg-slate-100 dark:bg-[#0f1118] border border-slate-200 dark:border-white/[0.08] overflow-hidden shadow-xl dark:shadow-2xl transition-colors">
-        {/* Stylized Topological Vector Canvas */}
-        <div
-          className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing transition-transform duration-300"
-          style={{ transform: `scale(${mapZoom / 100})` }}
-        >
-          {/* Base vector map SVG */}
-          <svg className="w-full h-full opacity-80 dark:opacity-70" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <pattern
-                id="mapGrid"
-                width="80"
-                height="80"
-                patternUnits="userSpaceOnUse"
-              >
-                <path
-                  d="M 80 0 L 0 0 0 80"
-                  fill="none"
-                  stroke={isDark ? "#1c202e" : "#e2e8f0"}
-                  strokeWidth="0.8"
-                />
-              </pattern>
-              {/* Route glowing gradient */}
-              <linearGradient id="routeGlow" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#eab308" stopOpacity="0.9" />
-                <stop offset="100%" stopColor="#f59e0b" stopOpacity="1" />
-              </linearGradient>
-            </defs>
-
-            {/* Subtle background grid */}
-            <rect width="100%" height="100%" fill={isDark ? "#0f1118" : "#f8fafc"} />
-            <rect width="100%" height="100%" fill="url(#mapGrid)" />
-
-            {/* Stylized roads / mining sectors & tracks */}
-            <g stroke={isDark ? "#1e2333" : "#cbd5e1"} strokeWidth="6" fill="none" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M 50 180 Q 220 220, 380 140 T 700 240 T 1100 180 T 1500 280" />
-              <path d="M 120 40 L 260 320 L 480 400 L 780 340 L 980 520 L 1400 480" />
-              <path d="M 280 580 L 420 440 L 640 480 L 920 380 L 1200 420 L 1480 620" />
-              <path d="M 460 120 L 520 380 L 740 540 L 860 620 L 1150 560" />
-              <path d="M 780 80 Q 940 180, 1020 380 T 1320 620" />
-              <path d="M 180 500 Q 380 620, 680 540 T 1120 620" />
-            </g>
-
-            {/* Minor roads / seam galleries */}
-            <g stroke={isDark ? "#171a26" : "#e2e8f0"} strokeWidth="2.5" fill="none" strokeLinecap="round">
-              <path d="M 80 120 L 240 160 L 320 280" />
-              <path d="M 380 260 L 520 240 L 600 360" />
-              <path d="M 640 180 L 780 200 L 880 140" />
-              <path d="M 920 240 L 1080 300 L 1220 220" />
-              <path d="M 500 480 L 640 560 L 780 500" />
-              <path d="M 880 440 L 1020 480 L 1160 380" />
-            </g>
-
-            {/* Active Highlighted Route */}
-            {showRoutes && (
-              <g>
-                <path
-                  d="M 260 320 L 420 440 L 580 490 L 740 530"
-                  stroke="url(#routeGlow)"
-                  strokeWidth="4.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  fill="none"
-                  strokeDasharray="8 4"
-                />
-                {/* Route radar ripple at destination */}
-                <circle cx="740" cy="530" r="28" fill="#eab308" fillOpacity="0.15" className="animate-ping" />
-                <circle cx="740" cy="530" r="16" fill="#eab308" fillOpacity="0.25" />
-                <circle cx="740" cy="530" r="5" fill="#fef08a" />
-              </g>
-            )}
-
-            {/* Vehicle positions on the map filtered by current selection */}
-            <g>
-              {filteredAssets.map((asset, idx) => {
-                const isSelected = selectedAsset.id === asset.id;
-                const posX = asset.coords.x * 14;
-                const posY = asset.coords.y * 7;
-                return (
-                  <g
-                    key={asset.id}
-                    transform={`translate(${posX}, ${posY}) rotate(${idx * 25 - 15})`}
-                    onClick={() => {
-                      setSelectedAsset(asset);
-                      setCardMinimized(false);
-                    }}
-                    className="cursor-pointer"
+                  <TabIcon className={`w-3 h-3 ${operationalMode === tab.id ? "text-amber-400" : "text-slate-500"}`} />
+                  <span>{tab.label}</span>
+                  <span
+                    className={`text-[9px] px-1 py-0.2 rounded-none ${
+                      operationalMode === tab.id
+                        ? "bg-amber-400 text-black font-bold"
+                        : "bg-[#151c2a] text-slate-400"
+                    }`}
                   >
-                    <rect
-                      x="-10"
-                      y="-18"
-                      width="20"
-                      height="36"
-                      rx="4"
-                      fill={isSelected ? (isDark ? "#ffffff" : "#0f172a") : (isDark ? "#94a3b8" : "#64748b")}
-                      stroke={isSelected ? "#eab308" : (isDark ? "#334155" : "#94a3b8")}
-                      strokeWidth={isSelected ? "2" : "1.5"}
-                      filter={isSelected ? "drop-shadow(0 2px 8px rgba(234,179,8,0.5))" : undefined}
-                    />
-                    <rect x="-7" y="-14" width="14" height="8" rx="2" fill={isDark ? "#1e2230" : "#ffffff"} />
-                    {isSelected && <circle cx="0" cy="0" r="3" fill="#eab308" />}
-                  </g>
-                );
-              })}
-            </g>
-          </svg>
-        </div>
-
-        {/* 3D-Styled Realistic Compass Rose Widget (Top-Right Corner) */}
-        <div className="absolute top-4 right-4 z-20 pointer-events-none select-none">
-          <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-white/90 dark:bg-[#12141c] border-2 border-slate-300 dark:border-[#2b3042] shadow-lg dark:shadow-[0_8px_30px_rgb(0,0,0,0.7)] flex items-center justify-center relative backdrop-blur-md transition-colors">
-            <div className="absolute inset-1 rounded-full border border-slate-200 dark:border-white/[0.08]" />
-            <div className="absolute inset-2.5 rounded-full bg-slate-50 dark:bg-[#0d0f15] border border-slate-200 dark:border-white/[0.05] flex items-center justify-center">
-              <span className="absolute top-1 text-[9px] font-mono text-slate-600 dark:text-zinc-400 font-semibold">N</span>
-              <span className="absolute bottom-1 text-[9px] font-mono text-slate-400 dark:text-zinc-500 font-semibold">S</span>
-              <span className="absolute left-1.5 text-[9px] font-mono text-slate-400 dark:text-zinc-500 font-semibold">W</span>
-              <span className="absolute right-1.5 text-[9px] font-mono text-slate-400 dark:text-zinc-500 font-semibold">E</span>
-
-              {/* Red / White Directional Needle */}
-              <div className="w-full h-full relative flex items-center justify-center -rotate-45">
-                <div className="absolute top-3 w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-b-[20px] border-b-rose-500" />
-                <div className="absolute bottom-3 w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[20px] border-t-slate-400 dark:border-t-zinc-300" />
-                <div className="w-3 h-3 rounded-full bg-slate-200 dark:bg-zinc-900 border-2 border-slate-400 dark:border-zinc-400 z-10 shadow-sm" />
-              </div>
-
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <span className="text-slate-900 dark:text-white font-bold text-xs tracking-wider drop-shadow-sm">
-                  NW
-                </span>
-              </div>
-            </div>
+                    {tab.count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Floating Asset Inspection Card */}
-        {!cardMinimized ? (
-          <div className="absolute top-4 left-4 z-20 w-full max-w-[370px] sm:max-w-[420px] rounded-2xl bg-white/95 dark:bg-[#141620]/95 backdrop-blur-xl border border-slate-200 dark:border-white/[0.08] shadow-xl dark:shadow-[0_12px_40px_rgba(0,0,0,0.8)] p-4 sm:p-5 transition-all text-slate-900 dark:text-white">
-            {/* Card Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-white/[0.06]">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-[#1d202e] border border-slate-200 dark:border-white/[0.08] flex items-center justify-center text-slate-900 dark:text-white">
-                  <Truck className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-base tracking-tight text-slate-900 dark:text-white">
-                      {selectedAsset.code}
-                    </h3>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                      {selectedAsset.status}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-0.5">
-                    {selectedAsset.name} · {selectedAsset.type}
-                  </p>
-                </div>
-              </div>
+        {/* Right: RTK Status & Core Actions */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+          {/* RTK Lock Telemetry Pill */}
+          <div className="hidden xl:flex items-center gap-2 px-2.5 py-1 bg-[#101520] border border-[#1b2438] text-[11px] font-mono">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-slate-300">
+              RTK-GNSS + UWB: <strong className="text-emerald-400">99.8% LOCK</strong>
+            </span>
+            <span className="text-slate-600">|</span>
+            <span className="text-slate-400">
+              HDOP: <strong>0.82</strong>
+            </span>
+            <span className="text-slate-600">|</span>
+            <span className="text-slate-400">
+              MSL: <strong>-184.2m</strong>
+            </span>
+          </div>
 
+          {/* Action buttons */}
+          <div className="flex items-center gap-1">
+            {/* GeoJSON Export (Kept & Improved per user request) */}
+            <button
+              onClick={handleExportGeoJSON}
+              title="Export Colliery Spatial Coordinates (GeoJSON)"
+              className="h-7 px-2 bg-[#121724] hover:bg-[#1a2133] border border-[#1f283d] text-slate-300 hover:text-white text-[11px] font-mono flex items-center gap-1 transition-colors rounded-sm"
+            >
+              <Download className="w-3 h-3 text-slate-400" />
+              <span>GeoJSON</span>
+            </button>
+
+            {/* Statutory Shift Report Generator (Direct to Reports module per user request) */}
+            <Link
+              to="/reports"
+              title="Generate DGMS Shift & Environmental Compliance Report"
+              className="h-7 px-2.5 bg-[#1b2436] hover:bg-[#25324a] border border-[#2d3a54] text-amber-300 hover:text-amber-200 text-[11px] font-mono font-medium flex items-center gap-1.5 transition-colors rounded-sm"
+            >
+              <FileText className="w-3 h-3 text-amber-400" />
+              <span>CMR Report</span>
+            </Link>
+
+            {/* Refresh Telemetry */}
+            <button
+              onClick={triggerTelemetryRefresh}
+              disabled={isLoading}
+              title="Re-synchronize Live Colliery Telemetry"
+              className="h-7 px-2 bg-[#121724] hover:bg-[#1a2133] border border-[#1f283d] text-slate-300 hover:text-white text-[11px] font-mono flex items-center gap-1 transition-colors rounded-sm"
+            >
+              <RefreshCw className={`w-3 h-3 text-amber-400 ${isLoading ? "animate-spin" : ""}`} />
+              <span>Sync</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main CAD 3-Panel GIS Workspace */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 items-start">
+        {/* Left Dock: Colliery Controls & Filtering (Col 3) */}
+        {leftDockOpen ? (
+          <div className="lg:col-span-3 bg-[#0a0d14] border border-[#181f2c] rounded-sm p-2.5 space-y-3.5 text-xs">
+            {/* Dock Header */}
+            <div className="flex items-center justify-between pb-1.5 border-b border-[#181f2c]">
+              <div className="flex items-center gap-2 text-slate-200 font-semibold uppercase tracking-wider text-[11px]">
+                <Layers className="w-3.5 h-3.5 text-amber-400" />
+                <span>Colliery Controls</span>
+              </div>
               <button
-                onClick={() => setCardMinimized(true)}
-                title="Minimize Card"
-                className="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/10 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white transition-colors"
+                onClick={() => setLeftDockOpen(false)}
+                className="text-slate-400 hover:text-white p-1 hover:bg-[#141a26] rounded-sm transition-colors"
+                title="Collapse Controls Dock"
               >
-                <X className="w-3.5 h-3.5" />
+                <ChevronLeft className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            {/* Route & Destination Progress */}
-            <div className="py-3 border-b border-slate-200 dark:border-white/[0.06] space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-medium text-slate-800 dark:text-zinc-200">
-                  {selectedAsset.from} ➔ {selectedAsset.to}
-                </span>
-                <span className="font-mono text-slate-500 dark:text-zinc-400 text-[11px]">
-                  {selectedAsset.totalDistance} <strong className="text-slate-900 dark:text-white font-semibold">{selectedAsset.progressPercent}%</strong>
+            {/* Authentic Colliery Control 1: Seam Horizon Depth Selector (Replaces photo sliders) */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-mono text-slate-300 uppercase tracking-wider font-semibold">
+                  Seam Horizon Depth Filter
+                </label>
+                <span className="text-[10px] font-mono text-amber-400">
+                  {selectedSeam === "ALL" ? "All Horizons" : selectedSeam.replace("_", " ")}
                 </span>
               </div>
-
-              {/* Route Progress Bar */}
-              <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-[#202434] overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-amber-500 to-emerald-500 transition-all duration-500"
-                  style={{ width: `${selectedAsset.progressPercent}%` }}
-                />
-              </div>
-
-              <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-zinc-400 pt-0.5">
-                <span>Est. Time to Arrival (ETA): <strong className="text-slate-900 dark:text-white font-medium">{selectedAsset.eta}</strong></span>
-                <span className="truncate max-w-[170px]">{selectedAsset.distanceRemaining}</span>
+              <p className="text-[10px] text-slate-500 font-mono">
+                Isolate underground galleries &amp; machinery by statutory working horizon.
+              </p>
+              <div className="grid grid-cols-1 gap-1 font-mono text-[10px]">
+                {[
+                  { id: "ALL", name: "All Horizons (Composite)", depth: "Surface to -245m" },
+                  { id: "SURFACE", name: "Surface Collar & Portal", depth: "0.0m MSL" },
+                  { id: "SEAM_I", name: "Seam I (Overburden Decline)", depth: "-45.0m MSL" },
+                  { id: "SEAM_II", name: "Seam II (Substation & Refuge)", depth: "-110.0m MSL" },
+                  { id: "SEAM_III", name: "Seam III (Active Longwall)", depth: "-184.2m MSL" },
+                  { id: "SEAM_IV", name: "Seam IV (Basal Development)", depth: "-245.0m MSL" },
+                ].map((s) => {
+                  const isActive = selectedSeam === s.id;
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => setSelectedSeam(s.id)}
+                      className={`py-1 px-2 text-left border rounded-sm flex items-center justify-between transition-colors ${
+                        isActive
+                          ? "bg-[#182236] border-amber-500/80 text-white font-semibold"
+                          : "bg-[#0d121c] border-[#182030] text-slate-400 hover:text-slate-200 hover:bg-[#131926]"
+                      }`}
+                    >
+                      <span className="truncate">{s.name}</span>
+                      <span className={`text-[9px] ${isActive ? "text-amber-400" : "text-slate-500"}`}>
+                        {s.depth}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Dual Dial Gauges (Speedometer & Fuel Level) */}
-            <div className="py-3.5 grid grid-cols-2 gap-3">
-              {/* Left Dial: Speedometer */}
-              <div className="rounded-xl bg-slate-50 dark:bg-[#191c28] border border-slate-200 dark:border-white/[0.06] p-3 flex flex-col items-center relative overflow-hidden">
-                <div className="w-full flex items-center justify-between text-[10px] text-slate-500 dark:text-zinc-400 uppercase tracking-wider font-semibold mb-1">
-                  <span>Speed</span>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-mono">
-                    LIVE
-                  </span>
-                </div>
-
-                <div className="relative w-28 h-16 flex items-center justify-center mt-1">
-                  <svg className="w-28 h-20 -rotate-90" viewBox="0 0 100 100">
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="40"
-                      fill="none"
-                      stroke={isDark ? "#282d3e" : "#e2e8f0"}
-                      strokeWidth="7"
-                      strokeDasharray="188"
-                      strokeDashoffset="62"
-                      strokeLinecap="round"
-                    />
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="40"
-                      fill="none"
-                      stroke="#22c55e"
-                      strokeWidth="7"
-                      strokeDasharray="188"
-                      strokeDashoffset={188 - (selectedAsset.speedMph / 100) * 126}
-                      strokeLinecap="round"
-                    />
-                  </svg>
-
-                  <div
-                    className="absolute bottom-1 w-1.5 h-10 bg-slate-900 dark:bg-white rounded-full origin-bottom transition-transform duration-500 shadow-sm"
-                    style={{
-                      transform: `rotate(${((selectedAsset.speedMph / 100) * 180) - 90}deg)`,
-                    }}
-                  />
-                  <div className="absolute bottom-0 w-3.5 h-3.5 rounded-full bg-slate-400 dark:bg-zinc-300 border-2 border-white dark:border-zinc-900" />
-                </div>
-
-                <div className="text-center mt-1">
-                  <span className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
-                    {selectedAsset.speedMph}
-                  </span>
-                  <span className="text-[11px] text-slate-500 dark:text-zinc-400 ml-1 font-medium">mph</span>
-                </div>
+            {/* Authentic Colliery Control 2: Statutory Gas Trip Alert Filter */}
+            <div className="space-y-1.5 pt-2 border-t border-[#181f2c]">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-mono text-slate-300 uppercase tracking-wider font-semibold">
+                  CMR 2017 Gas Alarm Filter
+                </label>
+                <span className="text-[10px] font-mono text-rose-400">Reg. 182</span>
               </div>
-
-              {/* Right Dial: Fuel Level */}
-              <div className="rounded-xl bg-slate-50 dark:bg-[#191c28] border border-slate-200 dark:border-white/[0.06] p-3 flex flex-col items-center relative overflow-hidden">
-                <div className="w-full flex items-center justify-between text-[10px] text-slate-500 dark:text-zinc-400 uppercase tracking-wider font-semibold mb-1">
-                  <span>Fuel level</span>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 font-mono">
-                    88%
-                  </span>
-                </div>
-
-                <div className="relative w-20 h-20 rounded-full bg-slate-100 dark:bg-[#12141c] border-2 border-slate-300 dark:border-[#2b3042] flex flex-col items-center justify-center mt-0.5 overflow-hidden shadow-inner">
-                  <div
-                    className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-amber-600 to-amber-400/80 transition-all duration-500"
-                    style={{ height: `${selectedAsset.fuelPercent}%` }}
-                  />
-                  <div className="absolute inset-0 bg-slate-900/10 dark:bg-[#12141c]/40 backdrop-blur-[1px]" />
-
-                  <Fuel className="w-3.5 h-3.5 text-slate-700 dark:text-zinc-300 z-10 mb-0.5" />
-                  <span className="text-xs font-bold text-slate-900 dark:text-white z-10 leading-none">
-                    {selectedAsset.fuelGal}
-                  </span>
-                  <span className="text-[9px] font-mono text-slate-600 dark:text-zinc-300 z-10">
-                    ± 2.5%
-                  </span>
-                </div>
-
-                <span className="text-[10px] text-slate-500 dark:text-zinc-400 mt-1 font-mono">
-                  Diesel Capacity
-                </span>
+              <div className="grid grid-cols-3 gap-1 font-mono text-[10px]">
+                <button
+                  onClick={() => setGasThresholdFilter("ALL")}
+                  className={`py-1 px-1.5 text-center border rounded-sm transition-colors ${
+                    gasThresholdFilter === "ALL"
+                      ? "bg-[#182236] border-[#32456e] text-white font-medium"
+                      : "bg-[#0d121c] border-[#182030] text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  All Nodes
+                </button>
+                <button
+                  onClick={() => setGasThresholdFilter("ADVISORY")}
+                  className={`py-1 px-1.5 text-center border rounded-sm transition-colors ${
+                    gasThresholdFilter === "ADVISORY"
+                      ? "bg-amber-950/80 border-amber-500 text-amber-300 font-semibold"
+                      : "bg-[#0d121c] border-[#182030] text-amber-400/70 hover:text-amber-300"
+                  }`}
+                >
+                  &gt;0.75% CH4
+                </button>
+                <button
+                  onClick={() => setGasThresholdFilter("TRIP")}
+                  className={`py-1 px-1.5 text-center border rounded-sm transition-colors ${
+                    gasThresholdFilter === "TRIP"
+                      ? "bg-rose-950/80 border-rose-500 text-rose-300 font-semibold"
+                      : "bg-[#0d121c] border-[#182030] text-rose-400/70 hover:text-rose-300"
+                  }`}
+                >
+                  &gt;1.25% Trip
+                </button>
               </div>
             </div>
 
-            {/* Alert Banner */}
-            {showAlerts && selectedAsset.alert && (
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-2.5 text-amber-900 dark:text-amber-200">
-                <AlertTriangle className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0 mt-0.5" />
-                <div className="text-xs leading-snug">
-                  <span className="font-semibold text-amber-800 dark:text-amber-300 block">
-                    {selectedAsset.alert}
+            {/* Layer Visibility Toggles */}
+            <div className="space-y-1.5 pt-2 border-t border-[#181f2c]">
+              <label className="text-[11px] font-mono text-slate-300 uppercase tracking-wider font-semibold block">
+                Colliery Spatial Layers
+              </label>
+
+              <div className="space-y-1 font-mono text-[11px]">
+                <label className="flex items-center justify-between p-1 bg-[#0e131d] border border-[#172030] rounded-sm cursor-pointer hover:bg-[#131a29] transition-colors">
+                  <span className="flex items-center gap-2 text-slate-200">
+                    <span className="w-2 h-2 rounded-full bg-cyan-400" />
+                    <span>Haulage Fleet (14)</span>
                   </span>
-                  <span className="text-[11px] text-amber-700/80 dark:text-amber-200/70">
-                    Mandatory statutory rest cycle under transport compliance.
+                  <input
+                    type="checkbox"
+                    checked={layerFleet}
+                    onChange={(e) => setLayerFleet(e.target.checked)}
+                    className="accent-cyan-500 rounded-none cursor-pointer"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between p-1 bg-[#0e131d] border border-[#172030] rounded-sm cursor-pointer hover:bg-[#131a29] transition-colors">
+                  <span className="flex items-center gap-2 text-slate-200">
+                    <span className="w-2 h-2 rounded-full bg-amber-400" />
+                    <span>Cap-Lamp Transponders (142)</span>
                   </span>
-                </div>
+                  <input
+                    type="checkbox"
+                    checked={layerTransponders}
+                    onChange={(e) => setLayerTransponders(e.target.checked)}
+                    className="accent-amber-500 rounded-none cursor-pointer"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between p-1 bg-[#0e131d] border border-[#172030] rounded-sm cursor-pointer hover:bg-[#131a29] transition-colors">
+                  <span className="flex items-center gap-2 text-slate-200">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                    <span>CMR 169 Optical Gates (8)</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={layerGateways}
+                    onChange={(e) => setLayerGateways(e.target.checked)}
+                    className="accent-emerald-500 rounded-none cursor-pointer"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between p-1 bg-[#0e131d] border border-[#172030] rounded-sm cursor-pointer hover:bg-[#131a29] transition-colors">
+                  <span className="flex items-center gap-2 text-slate-200">
+                    <span className="w-2 h-2 rounded-full bg-rose-400" />
+                    <span>Gas Beacons CH4/CO (24)</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={layerSensors}
+                    onChange={(e) => setLayerSensors(e.target.checked)}
+                    className="accent-rose-500 rounded-none cursor-pointer"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between p-1 bg-[#0e131d] border border-[#172030] rounded-sm cursor-pointer hover:bg-[#131a29] transition-colors">
+                  <span className="flex items-center gap-2 text-slate-200">
+                    <span className="w-2 h-2 rounded-full bg-violet-400" />
+                    <span>Geological Faults (3)</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={layerFaults}
+                    onChange={(e) => setLayerFaults(e.target.checked)}
+                    className="accent-violet-500 rounded-none cursor-pointer"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between p-1 bg-[#0e131d] border border-[#172030] rounded-sm cursor-pointer hover:bg-[#131a29] transition-colors">
+                  <span className="flex items-center gap-2 text-slate-200">
+                    <span className="w-2 h-2 rounded-full bg-blue-400" />
+                    <span>Emergency Escapeways (2)</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={layerEscapeways}
+                    onChange={(e) => setLayerEscapeways(e.target.checked)}
+                    className="accent-blue-500 rounded-none cursor-pointer"
+                  />
+                </label>
               </div>
-            )}
+            </div>
+
+            {/* Coordinate Inspector Box */}
+            <div className="pt-2 border-t border-[#181f2c] font-mono text-[10px] space-y-1 text-slate-400">
+              <div className="flex items-center justify-between text-slate-300">
+                <span className="uppercase">Projected Datum</span>
+                <span className="text-amber-400 font-semibold">UTM 45N / WGS84</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Cursor Northing:</span>
+                <span className="text-slate-200">
+                  {hoveredCoords ? hoveredCoords.lat : "23° 47' 14.2\" N"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Cursor Easting:</span>
+                <span className="text-slate-200">
+                  {hoveredCoords ? hoveredCoords.lon : "86° 24' 36.1\" E"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Elevation MSL:</span>
+                <span className="text-emerald-400">
+                  {hoveredCoords ? hoveredCoords.elevation : "-184.2 m MSL"}
+                </span>
+              </div>
+            </div>
           </div>
         ) : (
           <button
-            onClick={() => setCardMinimized(false)}
-            className="absolute top-4 left-4 z-20 h-10 px-4 rounded-xl bg-white dark:bg-[#141620] border border-slate-300 dark:border-white/[0.1] text-xs font-semibold text-slate-900 dark:text-white flex items-center gap-2 shadow-xl hover:bg-slate-100 dark:hover:bg-[#1d202e] transition-colors"
+            onClick={() => setLeftDockOpen(true)}
+            className="lg:col-span-1 h-12 bg-[#0a0d14] hover:bg-[#141a26] border border-[#181f2c] rounded-sm flex items-center justify-center text-slate-300 transition-colors"
+            title="Expand Controls Dock"
           >
-            <Truck className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-            <span>Show Inspection Card ({selectedAsset.code})</span>
+            <ChevronRight className="w-4 h-4 text-amber-400" />
           </button>
         )}
 
-        {/* Floating Map Action Tools (Bottom Right) */}
-        <div className="absolute bottom-5 right-5 z-20 flex flex-col items-center gap-1.5 select-none">
-          <div className="flex flex-col bg-white/90 dark:bg-[#141620]/90 backdrop-blur-md rounded-xl border border-slate-200 dark:border-white/[0.08] shadow-md p-1">
-            <button
-              onClick={() => setMapZoom(Math.min(mapZoom + 15, 160))}
-              title="Zoom In"
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setMapZoom(Math.max(mapZoom - 15, 70))}
-              title="Zoom Out"
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
-            >
-              <Minus className="w-4 h-4" />
-            </button>
+        {/* Center Viewport: High-Density Dark Vector GIS Coordinate Map */}
+        <div
+          className={`${
+            leftDockOpen && rightDockOpen
+              ? "lg:col-span-6"
+              : !leftDockOpen && !rightDockOpen
+              ? "lg:col-span-10"
+              : "lg:col-span-8"
+          } bg-[#06080e] border border-[#181f2c] rounded-sm relative overflow-hidden flex flex-col h-[700px] select-none`}
+        >
+          {/* Skeleton Shimmer Loading Overlay */}
+          {isLoading && (
+            <div className="absolute inset-0 z-50 bg-[#06080e] flex flex-col p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="h-6 w-48 bg-[#131926] skeleton-shimmer rounded-sm" />
+                <div className="h-6 w-32 bg-[#131926] skeleton-shimmer rounded-sm" />
+              </div>
+              <div className="flex-1 bg-[#0b0e17] skeleton-shimmer rounded-sm border border-[#192132]" />
+              <div className="grid grid-cols-4 gap-3">
+                <div className="h-10 bg-[#131926] skeleton-shimmer rounded-sm" />
+                <div className="h-10 bg-[#131926] skeleton-shimmer rounded-sm" />
+                <div className="h-10 bg-[#131926] skeleton-shimmer rounded-sm" />
+                <div className="h-10 bg-[#131926] skeleton-shimmer rounded-sm" />
+              </div>
+            </div>
+          )}
+
+          {/* Map Top Bar Telemetry Strip */}
+          <div className="absolute top-2.5 left-2.5 right-2.5 z-20 flex items-center justify-between pointer-events-none">
+            {/* Left coordinate & scale indicator */}
+            <div className="pointer-events-auto bg-[#0b0f17]/95 border border-[#1a2336] px-2.5 py-1 text-[11px] font-mono text-slate-300 flex items-center gap-2">
+              <Crosshair className="w-3.5 h-3.5 text-cyan-400" />
+              <span>SHAFT-04: GRID 84N</span>
+              <span className="text-slate-600">|</span>
+              <span className="text-amber-400">Scale 1:2500</span>
+              <span className="text-slate-600">|</span>
+              <span className="text-emerald-400">{filteredAssets.length} Assets Visible</span>
+            </div>
+
+            {/* Mode switch 2D / 3D */}
+            <div className="pointer-events-auto flex items-center gap-1 bg-[#0b0f17]/95 border border-[#1a2336] p-0.5">
+              <button
+                onClick={() => setIs3DMode(!is3DMode)}
+                className={`px-2 py-0.5 text-[10px] font-mono font-semibold transition-colors rounded-none ${
+                  is3DMode
+                    ? "bg-amber-400 text-black"
+                    : "bg-[#141b2b] text-slate-300 hover:text-white"
+                }`}
+              >
+                {is3DMode ? "3D ISOMETRIC" : "2D ORTHO"}
+              </button>
+            </div>
           </div>
 
-          <div className="flex flex-col bg-white/90 dark:bg-[#141620]/90 backdrop-blur-md rounded-xl border border-slate-200 dark:border-white/[0.08] shadow-md p-1">
-            <button
-              onClick={() => setMapZoom(100)}
-              title="Reset View"
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
+          {/* Interactive SVG GIS Map Canvas */}
+          <div
+            className="flex-1 w-full h-full relative cursor-crosshair overflow-hidden transition-transform duration-300"
+            style={{
+              transform: `scale(${mapZoom / 100}) translate(${mapPan.x}px, ${mapPan.y}px) ${
+                is3DMode ? "rotateX(28deg) rotateZ(-12deg)" : ""
+              }`,
+            }}
+          >
+            <svg
+              className="w-full h-full"
+              viewBox="0 0 900 600"
+              onMouseMove={handleMouseMove}
+              xmlns="http://www.w3.org/2000/svg"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
-            <button
-              title="Focus Active Asset"
-              onClick={() => setSelectedAsset(VEHICLES[0])}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
-            >
-              <Crosshair className="w-3.5 h-3.5" />
-            </button>
+              <defs>
+                {/* 1px precision CAD grid pattern */}
+                <pattern id="cadGridMajor" width="100" height="100" patternUnits="userSpaceOnUse">
+                  <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#151c2a" strokeWidth="1" />
+                </pattern>
+                <pattern id="cadGridMinor" width="20" height="20" patternUnits="userSpaceOnUse">
+                  <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#0e131d" strokeWidth="0.5" />
+                </pattern>
+              </defs>
+
+              {/* Background layers */}
+              <rect width="100%" height="100%" fill="#07090f" />
+              <rect width="100%" height="100%" fill="url(#cadGridMinor)" />
+              <rect width="100%" height="100%" fill="url(#cadGridMajor)" />
+
+              {/* Coordinate axis tick markers */}
+              <g stroke="#1b2438" strokeWidth="1">
+                {[100, 200, 300, 400, 500, 600, 700, 800].map((x) => (
+                  <line key={`tx-${x}`} x1={x} y1="0" x2={x} y2="8" />
+                ))}
+                {[100, 200, 300, 400, 500].map((y) => (
+                  <line key={`ty-${y}`} x1="0" y1={y} x2="8" y2={y} />
+                ))}
+              </g>
+
+              {/* Coordinate numbers on axes */}
+              <g fill="#37455f" fontFamily="monospace" fontSize="8">
+                <text x="105" y="12">439,100 mE</text>
+                <text x="305" y="12">439,300 mE</text>
+                <text x="505" y="12">439,500 mE</text>
+                <text x="705" y="12">439,700 mE</text>
+                <text x="10" y="105">2,631,800 mN</text>
+                <text x="10" y="305">2,631,600 mN</text>
+                <text x="10" y="505">2,631,400 mN</text>
+              </g>
+
+              {/* Geological fault lines */}
+              {layerFaults && (
+                <g stroke="#7c3aed" strokeWidth="1.5" strokeDasharray="6 4" fill="none" opacity="0.6">
+                  <path d="M 120 80 Q 320 220, 580 340 T 840 510" />
+                  <path d="M 400 40 L 520 220 L 720 380" />
+                  <text x="590" y="340" fill="#a78bfa" fontSize="8" fontFamily="monospace">
+                    FAULT F-3 (THROWS 4.2m)
+                  </text>
+                </g>
+              )}
+
+              {/* Primary Colliery Underground Gallery Spatial Network */}
+              <g
+                stroke={selectedSeam === "SEAM_IV" ? "#141c2c" : "#1e273a"}
+                strokeWidth="14"
+                fill="none"
+                strokeLinecap="square"
+              >
+                {/* Main Incline Haulage Drift */}
+                <path d="M 180 460 L 320 380 L 460 300 L 620 240 L 780 180" />
+                {/* Lateral Seam III Gallery 1 */}
+                <path d="M 320 380 L 380 310 L 460 210 L 540 160" />
+                {/* Sump Gallery Track */}
+                <path d="M 460 300 L 540 390 L 660 460 L 760 520" />
+                {/* Seam IV Basal Drift */}
+                <path d="M 620 240 L 710 440 L 820 480" stroke={selectedSeam === "SEAM_IV" ? "#2a3952" : undefined} />
+              </g>
+
+              {/* Underground Gallery Inner Centerline (Rails / Haul Road) */}
+              <g stroke="#090d15" strokeWidth="8" fill="none">
+                <path d="M 180 460 L 320 380 L 460 300 L 620 240 L 780 180" />
+                <path d="M 320 380 L 380 310 L 460 210 L 540 160" />
+                <path d="M 460 300 L 540 390 L 660 460 L 760 520" />
+                <path d="M 620 240 L 710 440 L 820 480" />
+              </g>
+
+              {/* Escapeways (Green dashed safety paths) */}
+              {layerEscapeways && (
+                <g stroke="#059669" strokeWidth="2" strokeDasharray="4 4" fill="none" opacity="0.85">
+                  <path d="M 190 470 L 330 390 L 470 310 L 630 250 L 790 190" />
+                  <path d="M 470 310 L 550 400 L 670 470" />
+                  <text x="680" y="475" fill="#34d399" fontSize="8" fontFamily="monospace">
+                    ESCAPEWAY INBYE B
+                  </text>
+                </g>
+              )}
+
+              {/* Haulage Route Vectors */}
+              {layerFleet && (
+                <g stroke="#0ea5e9" strokeWidth="2.5" strokeDasharray="8 6" fill="none">
+                  <path d="M 180 460 L 320 380 L 380 310" />
+                  <path d="M 380 310 L 460 300 L 540 390" />
+                  <circle cx="180" cy="460" r="4" fill="#0ea5e9" />
+                  <circle cx="380" cy="310" r="4" fill="#0ea5e9" />
+                </g>
+              )}
+
+              {/* Sector / Landmark Zone Labels */}
+              <g fill="#475569" fontSize="9" fontFamily="monospace" fontWeight="600">
+                <text x="140" y="490">PORTAL 04 WEIGHBRIDGE (EL 0.0m)</text>
+                <text x="320" y="290">SEAM III LONGWALL 3 (EL -184m)</text>
+                <text x="560" y="420">CENTRAL SUMP &amp; PUMP ROOM</text>
+                <text x="690" y="220">RETURN AIRWAY SHAFT #2</text>
+                <text x="730" y="470">SEAM IV BASAL DRIFT (EL -245m)</text>
+              </g>
+
+              {/* Active Colliery Asset Pins & Vehicles */}
+              {filteredAssets.map((asset) => {
+                const isSelected = selectedAsset.id === asset.id;
+                let pinColor = "#0ea5e9";
+                if (asset.category === "HAULAGE") pinColor = "#0284c7";
+                if (asset.category === "PERSONNEL") pinColor = "#f59e0b";
+                if (asset.category === "SENSOR") pinColor = (asset.gasCh4Pct || 0) >= 0.75 ? "#ef4444" : "#10b981";
+                if (asset.category === "GATEWAY") pinColor = "#10b981";
+
+                return (
+                  <g
+                    key={asset.id}
+                    transform={`translate(${asset.coordinates.x}, ${asset.coordinates.y})`}
+                    onClick={() => setSelectedAsset(asset)}
+                    className="cursor-pointer"
+                  >
+                    {/* Selected halo */}
+                    {isSelected && (
+                      <circle
+                        cx="0"
+                        cy="0"
+                        r="16"
+                        fill="none"
+                        stroke="#f59e0b"
+                        strokeWidth="1.5"
+                        strokeDasharray="3 3"
+                      />
+                    )}
+
+                    {/* Outer marker symbol */}
+                    <rect
+                      x="-8"
+                      y="-8"
+                      width="16"
+                      height="16"
+                      fill={isSelected ? "#f59e0b" : "#0d131f"}
+                      stroke={pinColor}
+                      strokeWidth="2"
+                    />
+
+                    {/* Inner core */}
+                    <circle cx="0" cy="0" r="3" fill={isSelected ? "#000000" : pinColor} />
+
+                    {/* Tag label */}
+                    <rect
+                      x="12"
+                      y="-11"
+                      width={asset.code.length * 6.5 + 16}
+                      height="16"
+                      fill="#090d16"
+                      stroke={isSelected ? "#f59e0b" : "#1f293d"}
+                      strokeWidth="1"
+                    />
+                    <text
+                      x="16"
+                      y="1"
+                      fill={isSelected ? "#f59e0b" : "#cbd5e1"}
+                      fontSize="9"
+                      fontFamily="monospace"
+                      fontWeight="bold"
+                    >
+                      {asset.code}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+
+          {/* Bottom GIS Navigation & Precision Controls Strip */}
+          <div className="bg-[#090d14] border-t border-[#181f2c] px-3 py-2 flex items-center justify-between text-xs font-mono">
+            {/* Live Hovered Coordinate Feed */}
+            <div className="flex items-center gap-3 text-slate-400 text-[11px]">
+              <span className="text-slate-300">
+                CURSOR: <strong className="text-amber-400">{hoveredCoords ? hoveredCoords.lat : "23° 47' 14.2\" N"}</strong>,{" "}
+                <strong className="text-amber-400">{hoveredCoords ? hoveredCoords.lon : "86° 24' 36.1\" E"}</strong>
+              </span>
+              <span className="text-slate-600 hidden sm:inline">|</span>
+              <span className="hidden sm:inline text-slate-400">
+                HEADING: <strong className="text-white">314° NW</strong>
+              </span>
+            </div>
+
+            {/* Viewport Control Buttons */}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setMapZoom(Math.max(70, mapZoom - 15))}
+                title="Zoom Out"
+                className="w-7 h-7 bg-[#111724] hover:bg-[#1a2236] border border-[#1d273c] text-slate-300 hover:text-white flex items-center justify-center rounded-sm transition-colors"
+              >
+                <ZoomOut className="w-3.5 h-3.5" />
+              </button>
+
+              <span className="px-2 text-[11px] text-slate-300 min-w-[44px] text-center">
+                {mapZoom}%
+              </span>
+
+              <button
+                onClick={() => setMapZoom(Math.min(180, mapZoom + 15))}
+                title="Zoom In"
+                className="w-7 h-7 bg-[#111724] hover:bg-[#1a2236] border border-[#1d273c] text-slate-300 hover:text-white flex items-center justify-center rounded-sm transition-colors"
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+              </button>
+
+              <button
+                onClick={() => {
+                  setMapZoom(100);
+                  setMapPan({ x: 0, y: 0 });
+                }}
+                title="Reset View Extents"
+                className="w-7 h-7 bg-[#111724] hover:bg-[#1a2236] border border-[#1d273c] text-slate-300 hover:text-white flex items-center justify-center rounded-sm transition-colors ml-0.5"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Map Bottom Hint & Timestamp */}
-        <div className="absolute bottom-4 left-6 z-20 flex items-center gap-4 text-[11px] text-slate-500 dark:text-zinc-500 font-medium select-none">
-          <span>Space + Drag to pan • Scroll to zoom</span>
-          <span className="hidden sm:inline">•</span>
-          <span className="hidden sm:inline">Most updated: every 5 minutes</span>
-        </div>
-      </div>
-
-      {/* Quick Statutory Workspaces Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
-        <Link
-          to="/gate-hud"
-          className="p-3.5 rounded-2xl bg-white dark:bg-[#141620] hover:bg-slate-50 dark:hover:bg-[#1a1e2c] border border-slate-200 dark:border-white/[0.06] hover:border-slate-300 dark:hover:border-white/[0.12] transition-all flex items-center justify-between group shadow-sm dark:shadow-none"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-              <ShieldCheck className="w-4 h-4" />
+        {/* Right Dock: Analytical Telemetry & Interrelated System Hub (Col 3) */}
+        {rightDockOpen ? (
+          <div className="lg:col-span-3 bg-[#0a0d14] border border-[#181f2c] rounded-sm p-2.5 space-y-3 text-xs">
+            {/* Dock Header */}
+            <div className="flex items-center justify-between pb-1.5 border-b border-[#181f2c]">
+              <div className="flex items-center gap-2 text-slate-200 font-semibold uppercase tracking-wider text-[11px]">
+                <Activity className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Selected Telemetry &amp; Strata</span>
+              </div>
+              <button
+                onClick={() => setRightDockOpen(false)}
+                className="text-slate-400 hover:text-white p-1 hover:bg-[#141a26] rounded-sm transition-colors"
+                title="Collapse Analytics Dock"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
             </div>
-            <div>
-              <span className="text-xs font-semibold text-slate-900 dark:text-white block group-hover:text-amber-500 transition-colors">
-                Pithead Gate HUD
+
+            {/* Selected Asset Telemetry HUD */}
+            <div className="p-2.5 bg-[#0e131d] border border-[#1b2538] rounded-sm space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-mono font-bold text-amber-400 text-xs tracking-tight">
+                  {selectedAsset.code}
+                </span>
+                <span
+                  className={`px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase rounded-none ${
+                    selectedAsset.status === "NORMAL"
+                      ? "bg-emerald-950 text-emerald-400 border border-emerald-800"
+                      : "bg-amber-950 text-amber-400 border border-amber-800"
+                  }`}
+                >
+                  {selectedAsset.status}
+                </span>
+              </div>
+
+              <div className="text-[11px] text-slate-300 font-mono">
+                {selectedAsset.name}
+              </div>
+
+              <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-[#1a2334] font-mono text-[10px]">
+                <div>
+                  <span className="text-slate-500 block">Horizon Seam</span>
+                  <span className="text-slate-200">{selectedAsset.seam}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block">MSL Elevation</span>
+                  <span className="text-slate-200">{selectedAsset.elevationMsl} m</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block">Velocity</span>
+                  <span className="text-slate-200">{selectedAsset.speedKmh} km/h</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block">Battery / Power</span>
+                  <span className="text-emerald-400 font-semibold">{selectedAsset.batteryPct}%</span>
+                </div>
+                {selectedAsset.payloadTons !== undefined && (
+                  <div className="col-span-2">
+                    <span className="text-slate-500 block">Haul Payload Tonnage</span>
+                    <span className="text-amber-400 font-bold">{selectedAsset.payloadTons} Metric Tons</span>
+                  </div>
+                )}
+                {selectedAsset.gasCh4Pct !== undefined && (
+                  <div className="col-span-2">
+                    <span className="text-slate-500 block">Atmospheric Methane (CH4)</span>
+                    <span className="text-rose-400 font-bold">{selectedAsset.gasCh4Pct}% (Advisory)</span>
+                  </div>
+                )}
+                {selectedAsset.operator && (
+                  <div className="col-span-2">
+                    <span className="text-slate-500 block">Assigned Personnel</span>
+                    <span className="text-slate-200">{selectedAsset.operator}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-2 bg-[#090d14] border border-[#161e2e] text-[10px] text-slate-400 font-mono leading-relaxed">
+                {selectedAsset.telemetryNote}
+              </div>
+
+              {/* Direct Contextual Jump Action to Interrelated Module */}
+              <button
+                onClick={() => navigate(selectedAsset.actionRoute)}
+                className="w-full py-1.5 px-2 bg-[#1b2538] hover:bg-[#25334a] border border-[#2e3e5c] text-amber-300 hover:text-amber-200 font-mono text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors rounded-sm"
+              >
+                <span>{selectedAsset.actionLabel}</span>
+                <ExternalLink className="w-3 h-3 text-amber-400" />
+              </button>
+            </div>
+
+            {/* Strata Depth Profile Cross-Section (Interactive) */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-[11px] font-mono">
+                <span className="text-slate-300 font-semibold uppercase">Strata Depth Profile</span>
+                <span className="text-slate-500">BH-14 Borehole</span>
+              </div>
+
+              <div className="space-y-1 font-mono text-[10px]">
+                {[
+                  { id: "SURFACE", name: "Surface Collar", depth: "0.0 m MSL" },
+                  { id: "SEAM_I", name: "Seam I (Overburden)", depth: "-45.0 m" },
+                  { id: "SEAM_II", name: "Seam II (Sandstone)", depth: "-110.0 m" },
+                  { id: "SEAM_III", name: "Seam III (Active Longwall)", depth: "-184.2 m", active: true },
+                  { id: "SEAM_IV", name: "Seam IV (Basal Coal)", depth: "-245.0 m" },
+                ].map((s) => {
+                  const isCurrent = selectedSeam === s.id;
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => setSelectedSeam(s.id)}
+                      className={`w-full p-1 text-left flex items-center justify-between border rounded-none transition-colors ${
+                        isCurrent
+                          ? "bg-[#1e293b] border-amber-500 text-white font-semibold"
+                          : s.active
+                          ? "bg-[#141b27] border-amber-500/40 text-slate-200"
+                          : "bg-[#0d121c] border-[#16202e] text-slate-400 hover:text-slate-200"
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5">
+                        {s.active && <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-ping" />}
+                        <span>{s.name}</span>
+                      </span>
+                      <span className={isCurrent ? "text-amber-400" : "text-slate-500"}>
+                        {s.depth}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Haulage Throughput & Fleet Performance */}
+            <div className="space-y-1 pt-1.5 border-t border-[#181f2c]">
+              <div className="flex items-center justify-between text-[11px] font-mono">
+                <span className="text-slate-300 font-semibold uppercase">Haulage Throughput</span>
+                <span className="text-emerald-400">SHIFT C ACTIVE</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-1 font-mono text-[10px]">
+                <div className="p-1.5 bg-[#0d121c] border border-[#172132]">
+                  <span className="text-slate-500 block">Cycle Time</span>
+                  <span className="text-white text-xs font-bold">14.2 min</span>
+                </div>
+                <div className="p-1.5 bg-[#0d121c] border border-[#172132]">
+                  <span className="text-slate-500 block">Throughput</span>
+                  <span className="text-white text-xs font-bold">842 T/hr</span>
+                </div>
+                <div className="p-1.5 bg-[#0d121c] border border-[#172132]">
+                  <span className="text-slate-500 block">Gate Latency</span>
+                  <span className="text-white text-xs font-bold">3.8 sec</span>
+                </div>
+                <div className="p-1.5 bg-[#0d121c] border border-[#172132]">
+                  <span className="text-slate-500 block">Active Ratio</span>
+                  <span className="text-emerald-400 text-xs font-bold">12 / 14</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Multi-Parameter Safety Envelope Visual */}
+            <div className="space-y-1 pt-1.5 border-t border-[#181f2c]">
+              <div className="flex items-center justify-between text-[11px] font-mono">
+                <span className="text-slate-300 font-semibold uppercase">Safety Envelope</span>
+                <span className="text-emerald-400 font-bold">96.8 / 100</span>
+              </div>
+
+              <div className="space-y-1 font-mono text-[10px]">
+                <div className="flex items-center justify-between text-slate-400">
+                  <span>Atmospheric Methane (CH4)</span>
+                  <span className="text-emerald-400">98% Safe</span>
+                </div>
+                <div className="w-full bg-[#161e2c] h-1">
+                  <div className="bg-emerald-500 h-1" style={{ width: "98%" }} />
+                </div>
+
+                <div className="flex items-center justify-between text-slate-400 pt-0.5">
+                  <span>Strata Convergence</span>
+                  <span className="text-emerald-400">94% Safe</span>
+                </div>
+                <div className="w-full bg-[#161e2c] h-1">
+                  <div className="bg-emerald-500 h-1" style={{ width: "94%" }} />
+                </div>
+
+                <div className="flex items-center justify-between text-slate-400 pt-0.5">
+                  <span>Personnel Mustering Lock</span>
+                  <span className="text-emerald-400">100% Reconciled</span>
+                </div>
+                <div className="w-full bg-[#161e2c] h-1">
+                  <div className="bg-emerald-500 h-1" style={{ width: "100%" }} />
+                </div>
+              </div>
+            </div>
+
+            {/* Interrelated Modules Command Strip */}
+            <div className="pt-2 border-t border-[#181f2c] space-y-1">
+              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block font-semibold">
+                Interrelated Operations Modules
               </span>
-              <span className="text-[11px] text-slate-500 dark:text-zinc-400">
-                Live Turnstiles &amp; RFID
-              </span>
+              <div className="grid grid-cols-2 gap-1 font-mono text-[10px]">
+                <Link
+                  to="/gate-hud"
+                  className="p-1.5 bg-[#0e1420] hover:bg-[#162033] border border-[#1b2538] text-slate-300 hover:text-white flex items-center justify-between transition-colors"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Shield className="w-3 h-3 text-emerald-400" />
+                    <span>Gate HUD</span>
+                  </span>
+                  <ChevronRight className="w-3 h-3 text-slate-500" />
+                </Link>
+
+                <Link
+                  to="/telemetry"
+                  className="p-1.5 bg-[#0e1420] hover:bg-[#162033] border border-[#1b2538] text-slate-300 hover:text-white flex items-center justify-between transition-colors"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Wind className="w-3 h-3 text-sky-400" />
+                    <span>Gas Telemetry</span>
+                  </span>
+                  <ChevronRight className="w-3 h-3 text-slate-500" />
+                </Link>
+
+                <Link
+                  to="/hardware-matrix"
+                  className="p-1.5 bg-[#0e1420] hover:bg-[#162033] border border-[#1b2538] text-slate-300 hover:text-white flex items-center justify-between transition-colors"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Server className="w-3 h-3 text-amber-400" />
+                    <span>Diagnostics</span>
+                  </span>
+                  <ChevronRight className="w-3 h-3 text-slate-500" />
+                </Link>
+
+                <Link
+                  to="/governance/remediation"
+                  className="p-1.5 bg-[#0e1420] hover:bg-[#162033] border border-[#1b2538] text-slate-300 hover:text-white flex items-center justify-between transition-colors"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <AlertTriangle className="w-3 h-3 text-rose-400" />
+                    <span>Remediation</span>
+                  </span>
+                  <ChevronRight className="w-3 h-3 text-slate-500" />
+                </Link>
+
+                <Link
+                  to="/governance/audit-ledger"
+                  className="p-1.5 bg-[#0e1420] hover:bg-[#162033] border border-[#1b2538] text-slate-300 hover:text-white flex items-center justify-between transition-colors"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Compass className="w-3 h-3 text-violet-400" />
+                    <span>Audit Ledger</span>
+                  </span>
+                  <ChevronRight className="w-3 h-3 text-slate-500" />
+                </Link>
+
+                <Link
+                  to="/field-ops/form-iv"
+                  className="p-1.5 bg-[#0e1420] hover:bg-[#162033] border border-[#1b2538] text-slate-300 hover:text-white flex items-center justify-between transition-colors"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <FileText className="w-3 h-3 text-amber-400" />
+                    <span>Form IV Diary</span>
+                  </span>
+                  <ChevronRight className="w-3 h-3 text-slate-500" />
+                </Link>
+              </div>
             </div>
           </div>
-          <ExternalLink className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 group-hover:text-slate-600 dark:group-hover:text-zinc-300" />
-        </Link>
-
-        <Link
-          to="/governance/remediation"
-          className="p-3.5 rounded-2xl bg-white dark:bg-[#141620] hover:bg-slate-50 dark:hover:bg-[#1a1e2c] border border-slate-200 dark:border-white/[0.06] hover:border-slate-300 dark:hover:border-white/[0.12] transition-all flex items-center justify-between group shadow-sm dark:shadow-none"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-              <AlertTriangle className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="text-xs font-semibold text-slate-900 dark:text-white block group-hover:text-amber-500 transition-colors">
-                Remediation Board
-              </span>
-              <span className="text-[11px] text-slate-500 dark:text-zinc-400">
-                CMR 2017 SLA Kanban
-              </span>
-            </div>
-          </div>
-          <ExternalLink className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 group-hover:text-slate-600 dark:group-hover:text-zinc-300" />
-        </Link>
-
-        <Link
-          to="/environmental-trends"
-          className="p-3.5 rounded-2xl bg-white dark:bg-[#141620] hover:bg-slate-50 dark:hover:bg-[#1a1e2c] border border-slate-200 dark:border-white/[0.06] hover:border-slate-300 dark:hover:border-white/[0.12] transition-all flex items-center justify-between group shadow-sm dark:shadow-none"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center">
-              <Wind className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="text-xs font-semibold text-slate-900 dark:text-white block group-hover:text-amber-500 transition-colors">
-                Gas Telemetry
-              </span>
-              <span className="text-[11px] text-slate-500 dark:text-zinc-400">
-                Atmospheric Trends
-              </span>
-            </div>
-          </div>
-          <ExternalLink className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 group-hover:text-slate-600 dark:group-hover:text-zinc-300" />
-        </Link>
-
-        <Link
-          to="/governance/audit-ledger"
-          className="p-3.5 rounded-2xl bg-white dark:bg-[#141620] hover:bg-slate-50 dark:hover:bg-[#1a1e2c] border border-slate-200 dark:border-white/[0.06] hover:border-slate-300 dark:hover:border-white/[0.12] transition-all flex items-center justify-between group shadow-sm dark:shadow-none"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center">
-              <Compass className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="text-xs font-semibold text-slate-900 dark:text-white block group-hover:text-amber-500 transition-colors">
-                Audit Ledger
-              </span>
-              <span className="text-[11px] text-slate-500 dark:text-zinc-400">
-                SHA-256 Chain Verify
-              </span>
-            </div>
-          </div>
-          <ExternalLink className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 group-hover:text-slate-600 dark:group-hover:text-zinc-300" />
-        </Link>
+        ) : (
+          <button
+            onClick={() => setRightDockOpen(true)}
+            className="lg:col-span-1 h-12 bg-[#0a0d14] hover:bg-[#141a26] border border-[#181f2c] rounded-sm flex items-center justify-center text-slate-300 transition-colors"
+            title="Expand Analytics Dock"
+          >
+            <ChevronLeft className="w-4 h-4 text-cyan-400" />
+          </button>
+        )}
       </div>
     </div>
   );

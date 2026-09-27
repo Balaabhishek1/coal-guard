@@ -5,7 +5,7 @@ wearer state telemetry, and real-time control room WebSocket payload envelopes.
 """
 
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Literal, Optional
 import uuid
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -34,6 +34,7 @@ class EdgeAccessEventPayload(BaseModel):
 
     rfid_tag: str = Field(..., min_length=1, max_length=128, description="Scanned RFID tag UID")
     location_id: uuid.UUID = Field(..., description="MineLocation UUID for the pithead turnstile gate")
+    direction: Literal["INGRESS", "EGRESS"] = Field("INGRESS", description="Transit direction (INGRESS or EGRESS)")
     optical_compliance: bool = Field(..., description="True if all statutory PPE items are confirmed worn")
     credential_eligibility: bool = Field(..., description="True if worker passed VTC/PME/Shift eligibility")
     gate_actuated: bool = Field(..., description="True if physical turnstile unlocked, False if denied/held")

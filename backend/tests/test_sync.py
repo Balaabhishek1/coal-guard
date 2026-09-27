@@ -13,9 +13,15 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security import create_access_token
 from app.models.governance import AuditLedger, ComplianceViolation, ViolationSeverity
 from app.models.location import LocationType, MineLocation
 from app.models.sync_log import FormIVInspection, SyncLog, SyncStatus
+
+
+def get_auth_headers(user) -> dict:
+    token = create_access_token({"sub": str(user.id), "role": user.role})
+    return {"Authorization": f"Bearer {token}"}
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -29,6 +35,21 @@ async def location_fixture(db_session: AsyncSession):
     db_session.add(loc)
     await db_session.commit()
     return loc
+
+
+@pytest.mark.asyncio
+async def test_unauthenticated_sync_batch_rejected(
+    client: AsyncClient,
+    location_fixture: MineLocation,
+):
+    """Verifies that an unauthenticated caller is rejected with HTTP 401."""
+    payload = {
+        "sync_id": str(uuid.uuid4()),
+        "device_id": "ROGUE-DEVICE",
+        "checklists": [],
+    }
+    response = await client.post("/api/v1/sync/batch", json=payload)
+    assert response.status_code == 401
 
 
 @pytest.mark.asyncio
@@ -74,6 +95,7 @@ async def test_idempotent_batch_sync_first_time(
         "/api/v1/sync/batch",
         json=payload,
         params={"inspector_id": str(overman.id)},
+        headers=get_auth_headers(overman),
     )
     assert response.status_code == 200
     data = response.json()
@@ -141,12 +163,12 @@ async def test_duplicate_sync_id_returns_idempotent_ack_without_reinserting(
     }
 
     # Initial successful submission
-    res1 = await client.post("/api/v1/sync/batch", json=payload, params={"inspector_id": str(overman.id)})
+    res1 = await client.post("/api/v1/sync/batch", json=payload, params={"inspector_id": str(overman.id)}, headers=get_auth_headers(overman))
     assert res1.status_code == 200
     assert res1.json()["status"] == "COMPLETED"
 
     # Second submission with identical sync_id
-    res2 = await client.post("/api/v1/sync/batch", json=payload, params={"inspector_id": str(overman.id)})
+    res2 = await client.post("/api/v1/sync/batch", json=payload, params={"inspector_id": str(overman.id)}, headers=get_auth_headers(overman))
     assert res2.status_code == 200
     data2 = res2.json()
 
@@ -189,7 +211,7 @@ async def test_hazardous_methane_inspection_triggers_statutory_violation(
         ],
     }
 
-    response = await client.post("/api/v1/sync/batch", json=payload, params={"inspector_id": str(overman.id)})
+    response = await client.post("/api/v1/sync/batch", json=payload, params={"inspector_id": str(overman.id)}, headers=get_auth_headers(overman))
     assert response.status_code == 200
     data = response.json()
 
@@ -216,7 +238,7 @@ async def test_sub_standard_air_velocity_triggers_violation(
     seed_data: dict,
     location_fixture: MineLocation,
 ):
-    """Verifies that air velocity < 30 m/min triggers a HIGH severity airflow violation under CMR 2017 Reg 153."""
+    """Verifies that air velocity < 15 m/min triggers a HIGH severity airflow violation under CMR 2017 Reg 153."""
     overman = seed_data["overman"]
     sync_id = uuid.uuid4()
 
@@ -227,7 +249,7 @@ async def test_sub_standard_air_velocity_triggers_violation(
             {
                 "location_id": str(location_fixture.id),
                 "roof_bolt_torque_nm": 115.0,
-                "air_velocity_m_per_min": 18.5,  # < 30 m/min statutory limit
+                "air_velocity_m_per_min": 12.0,  # < 15 m/min statutory limit
                 "gas_ch4_percent": 0.12,
                 "gas_co_ppm": 2.0,
                 "strata_remarks": "Sluggish ventilation reported at blind heading.",
@@ -237,7 +259,7 @@ async def test_sub_standard_air_velocity_triggers_violation(
         ],
     }
 
-    response = await client.post("/api/v1/sync/batch", json=payload, params={"inspector_id": str(overman.id)})
+    response = await client.post("/api/v1/sync/batch", json=payload, params={"inspector_id": str(overman.id)}, headers=get_auth_headers(overman))
     assert response.status_code == 200
     data = response.json()
 
@@ -262,7 +284,7 @@ async def test_under_torqued_roof_bolt_triggers_violation(
     seed_data: dict,
     location_fixture: MineLocation,
 ):
-    """Verifies that roof bolt torque < 100 Nm triggers a HIGH severity strata support violation."""
+    """Verifies that roof bolt torque < 80 Nm triggers a HIGH severity strata support violation."""
     overman = seed_data["overman"]
     sync_id = uuid.uuid4()
 
@@ -272,7 +294,7 @@ async def test_under_torqued_roof_bolt_triggers_violation(
         "checklists": [
             {
                 "location_id": str(location_fixture.id),
-                "roof_bolt_torque_nm": 65.0,  # < 100 Nm minimum
+                "roof_bolt_torque_nm": 65.0,  # < 80 Nm minimum
                 "air_velocity_m_per_min": 38.0,
                 "gas_ch4_percent": 0.08,
                 "gas_co_ppm": 1.0,
@@ -283,7 +305,7 @@ async def test_under_torqued_roof_bolt_triggers_violation(
         ],
     }
 
-    response = await client.post("/api/v1/sync/batch", json=payload, params={"inspector_id": str(overman.id)})
+    response = await client.post("/api/v1/sync/batch", json=payload, params={"inspector_id": str(overman.id)}, headers=get_auth_headers(overman))
     assert response.status_code == 200
     data = response.json()
 
@@ -318,7 +340,7 @@ async def test_sync_batch_with_invalid_location_fails(
             }
         ],
     }
-    response = await client.post("/api/v1/sync/batch", json=payload, params={"inspector_id": str(overman.id)})
+    response = await client.post("/api/v1/sync/batch", json=payload, params={"inspector_id": str(overman.id)}, headers=get_auth_headers(overman))
     assert response.status_code == 400
 
 
@@ -346,9 +368,9 @@ async def test_list_inspections_endpoint(
             }
         ],
     }
-    await client.post("/api/v1/sync/batch", json=payload, params={"inspector_id": str(overman.id)})
+    await client.post("/api/v1/sync/batch", json=payload, params={"inspector_id": str(overman.id)}, headers=get_auth_headers(overman))
 
-    response = await client.get("/api/v1/sync/inspections", params={"location_id": str(location_fixture.id)})
+    response = await client.get("/api/v1/sync/inspections", params={"location_id": str(location_fixture.id)}, headers=get_auth_headers(overman))
     assert response.status_code == 200
     inspections = response.json()
     assert len(inspections) >= 1

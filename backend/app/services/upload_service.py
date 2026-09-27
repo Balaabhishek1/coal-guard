@@ -5,6 +5,7 @@ captured underground during offline inspections. Assembles chunks on disk and cr
 InspectionEvidence records linked to Form IV inspections.
 """
 
+import anyio
 from datetime import datetime, timezone
 import json
 import logging
@@ -26,6 +27,19 @@ from app.schemas.sync import (
 )
 
 logger = logging.getLogger("coalguard.upload")
+
+ALLOWED_MEDIA_EXTENSIONS = {".webp", ".jpg", ".jpeg", ".png"}
+
+
+def detect_image_mime(header: bytes) -> Optional[str]:
+    """Detect image MIME type from binary magic bytes."""
+    if len(header) >= 12 and header.startswith(b"RIFF") and header[8:12] == b"WEBP":
+        return "image/webp"
+    if len(header) >= 3 and header.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if len(header) >= 8 and header.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    return None
 
 
 class UploadService:
@@ -50,6 +64,14 @@ class UploadService:
         payload: ChunkUploadInit,
     ) -> ChunkUploadInitResponse:
         """Initializes a resumable chunk upload session and stages temporary directory."""
+        clean_name = Path(payload.file_name).name
+        ext = Path(clean_name).suffix.lower()
+        if ext not in ALLOWED_MEDIA_EXTENSIONS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid file extension '{ext}'. Only {', '.join(sorted(ALLOWED_MEDIA_EXTENSIONS))} allowed.",
+            )
+
         if payload.inspection_id is not None:
             stmt = select(FormIVInspection).where(FormIVInspection.id == payload.inspection_id)
             res = await db.execute(stmt)
@@ -64,7 +86,7 @@ class UploadService:
 
         meta = {
             "upload_token": upload_token,
-            "file_name": payload.file_name,
+            "file_name": clean_name,
             "total_chunks": payload.total_chunks,
             "file_size_bytes": payload.file_size_bytes,
             "inspection_id": str(payload.inspection_id) if payload.inspection_id else None,
@@ -77,7 +99,7 @@ class UploadService:
 
         logger.info(
             f"[UPLOAD INIT] Session initialized (Token: {upload_token}, "
-            f"File: {payload.file_name}, Chunks: {payload.total_chunks})"
+            f"File: {clean_name}, Chunks: {payload.total_chunks})"
         )
 
         return ChunkUploadInitResponse(
@@ -115,10 +137,14 @@ class UploadService:
                 detail=f"Invalid chunk_index {chunk_index}. Must be between 0 and {total_chunks - 1}.",
             )
 
-        # Write chunk part
+        # Write chunk part via threadpool
         chunk_file = staging_dir / f"chunk_{chunk_index:05d}.part"
-        with open(chunk_file, "wb") as f:
-            f.write(chunk_data)
+
+        def _write_chunk():
+            with open(chunk_file, "wb") as f:
+                f.write(chunk_data)
+
+        await anyio.to_thread.run_sync(_write_chunk)
 
         # Determine how many chunks have been saved so far
         existing_chunks = list(staging_dir.glob("chunk_*.part"))
@@ -140,24 +166,41 @@ class UploadService:
         final_filename = f"{upload_token}_{sanitized_name}"
         final_path = cls._get_media_dir() / final_filename
 
-        with open(final_path, "wb") as outfile:
-            for idx in range(total_chunks):
-                part_path = staging_dir / f"chunk_{idx:05d}.part"
-                if not part_path.exists():
-                    raise HTTPException(
-                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail=f"Missing chunk #{idx} during assembly.",
-                    )
-                with open(part_path, "rb") as infile:
-                    outfile.write(infile.read())
+        def _assemble_and_validate() -> str:
+            with open(final_path, "wb") as outfile:
+                for idx in range(total_chunks):
+                    part_path = staging_dir / f"chunk_{idx:05d}.part"
+                    if not part_path.exists():
+                        raise HTTPException(
+                            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=f"Missing chunk #{idx} during assembly.",
+                        )
+                    with open(part_path, "rb") as infile:
+                        outfile.write(infile.read())
 
-        # Cleanup temporary chunk parts and session file
-        try:
-            for part_path in staging_dir.glob("*"):
-                part_path.unlink()
-            staging_dir.rmdir()
-        except Exception as exc:
-            logger.warning(f"Error cleaning staging directory {staging_dir}: {exc}")
+            # Validate header magic bytes
+            with open(final_path, "rb") as f:
+                header = f.read(32)
+            mime = detect_image_mime(header)
+            if not mime:
+                if final_path.exists():
+                    final_path.unlink()
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid image payload. File failed magic byte statutory verification.",
+                )
+
+            # Cleanup staging directory
+            try:
+                for part_path in staging_dir.glob("*"):
+                    part_path.unlink()
+                staging_dir.rmdir()
+            except Exception as exc:
+                logger.warning(f"Error cleaning staging directory {staging_dir}: {exc}")
+
+            return mime
+
+        detected_mime = await anyio.to_thread.run_sync(_assemble_and_validate)
 
         # Persist InspectionEvidence in database
         actual_size = os.path.getsize(final_path)
@@ -168,7 +211,7 @@ class UploadService:
             inspection_id=inspection_id,
             file_path=str(final_path.as_posix()),
             file_size_bytes=actual_size,
-            mime_type="image/webp",
+            mime_type=detected_mime,
             upload_completed=True,
             created_at=datetime.now(timezone.utc),
         )

@@ -36,6 +36,25 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.error(f"Startup database initialization error: {exc}")
 
+    import os
+    if os.getenv("RUN_MIGRATIONS", "").lower() in ("true", "1") or os.getenv("AUTO_MIGRATE", "").lower() in ("true", "1"):
+        try:
+            import anyio
+            from alembic import command
+            from alembic.config import Config
+
+            def _run_migrations():
+                alembic_cfg_path = os.path.join(os.path.dirname(__file__), "alembic.ini")
+                if os.path.exists(alembic_cfg_path):
+                    logger.info("Applying automated Alembic migrations (upgrade head)...")
+                    alembic_cfg = Config(alembic_cfg_path)
+                    command.upgrade(alembic_cfg, "head")
+                    logger.info("Automated database migrations applied successfully.")
+
+            await anyio.to_thread.run_sync(_run_migrations)
+        except Exception as mig_exc:
+            logger.warning(f"Automated database migration failed or skipped: {mig_exc}")
+
     try:
         await init_redis_pool()
         ws_manager.start_redis_listener()

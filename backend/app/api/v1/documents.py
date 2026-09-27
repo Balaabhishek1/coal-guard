@@ -6,6 +6,7 @@ asynchronous OCR processing triggering, status polling, and statutory human veri
 
 import logging
 import os
+from pathlib import Path
 import shutil
 from typing import List, Optional
 import uuid
@@ -23,9 +24,9 @@ from fastapi import (
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user, get_db, get_optional_current_user
+from app.api.dependencies import get_current_user, get_db, require_role
 from app.models.document import DigitizedCertificate, DocumentType, ProcessingStatus
-from app.models.user import User, WorkerCredential
+from app.models.user import User, UserRole, WorkerCredential
 from app.schemas.document import (
     DocumentUploadResponse,
     DocumentVerifyRequest,
@@ -41,6 +42,8 @@ router = APIRouter(prefix="/documents", tags=["Document Digitization & OCR"])
 UPLOAD_BASE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "uploads", "documents")
 os.makedirs(UPLOAD_BASE_DIR, exist_ok=True)
 
+ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".pdf", ".webp", ".tif", ".tiff", ".txt"}
+
 
 @router.post(
     "/upload",
@@ -55,10 +58,18 @@ async def upload_document(
     target_user_id: Optional[uuid.UUID] = Form(None, description="Associated worker identity"),
     target_hardware_id: Optional[uuid.UUID] = Form(None, description="Associated machinery asset identity"),
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> DocumentUploadResponse:
+    raw_name = Path(file.filename or "upload.bin").name
+    ext = Path(raw_name).suffix.lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported file format '{ext}'. Allowed extensions: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
+        )
+
     cert_id = uuid.uuid4()
-    filename = f"{cert_id}_{file.filename}"
+    filename = f"{cert_id}_{raw_name}"
     saved_path = os.path.join(UPLOAD_BASE_DIR, filename)
 
     try:
@@ -112,6 +123,7 @@ async def upload_document(
 async def get_document(
     certificate_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> OCRResultResponse:
     stmt = select(DigitizedCertificate).where(DigitizedCertificate.id == certificate_id)
     res = await db.execute(stmt)
@@ -142,7 +154,14 @@ async def verify_document(
     certificate_id: uuid.UUID,
     payload: DocumentVerifyRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_current_user),
+    current_user: User = Depends(
+        require_role([
+            UserRole.SAFETY_OFFICER,
+            UserRole.COLLIERY_MANAGER,
+            UserRole.MANAGER,
+            UserRole.OVERMAN,
+        ])
+    ),
 ) -> OCRResultResponse:
     stmt = select(DigitizedCertificate).where(DigitizedCertificate.id == certificate_id)
     res = await db.execute(stmt)
@@ -185,7 +204,7 @@ async def verify_document(
                 updated_credential = True
 
     # Anchor human verification in the audit ledger
-    verifier_id = current_user.id if current_user else None
+    verifier_id = current_user.id
     await HashChainService.append_log(
         db=db,
         action_type="DOCUMENT_HUMAN_VERIFIED",
@@ -220,6 +239,7 @@ async def list_documents(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> List[OCRResultResponse]:
     stmt = select(DigitizedCertificate).order_by(desc(DigitizedCertificate.created_at))
 

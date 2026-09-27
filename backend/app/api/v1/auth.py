@@ -9,7 +9,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -17,6 +17,7 @@ from app.api.dependencies import (
     get_current_active_user,
     get_current_user,
     get_db,
+    get_optional_current_user,
     require_role,
 )
 from app.core.config import settings
@@ -123,10 +124,19 @@ async def login_form(
 async def register_user(
     user_in: UserCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> UserRead:
-    # Check if first user bootstrap or authorized manager
-    if current_user is not None:
+    # Check total existing users to safely permit first-time system bootstrap
+    user_count_stmt = select(func.count(User.id))
+    user_count_res = await db.execute(user_count_stmt)
+    total_users = user_count_res.scalar() or 0
+
+    if total_users > 0:
+        if current_user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required to register personnel",
+            )
         user_role = str(current_user.role).upper()
         if user_role not in [
             UserRole.COLLIERY_MANAGER.value,

@@ -11,14 +11,28 @@ import pytest
 from httpx import AsyncClient
 from starlette.testclient import TestClient
 
+from app.core.security import create_access_token
 from app.core.ws_manager import ws_manager
 from main import app
 
 
-def test_control_room_websocket_handshake():
-    """Verifies that connecting to /api/v1/ws/control-room yields CONNECTED handshake frame."""
+def get_test_token() -> str:
+    return create_access_token({"sub": "00000000-0000-0000-0000-000000000001", "role": "SAFETY_OFFICER"})
+
+
+def test_control_room_websocket_unauthorized():
+    """Verifies that connecting without a valid token is rejected with policy violation (1008)."""
     with TestClient(app) as test_client:
-        with test_client.websocket_connect("/api/v1/ws/control-room") as ws:
+        with pytest.raises(Exception):
+            with test_client.websocket_connect("/api/v1/ws/control-room"):
+                pass
+
+
+def test_control_room_websocket_handshake():
+    """Verifies that connecting to /api/v1/ws/control-room with token yields CONNECTED handshake frame."""
+    token = get_test_token()
+    with TestClient(app) as test_client:
+        with test_client.websocket_connect(f"/api/v1/ws/control-room?token={token}") as ws:
             data = ws.receive_json()
             assert data["event_type"] == "CONNECTED"
             assert data["channel"] == "system"
@@ -28,8 +42,9 @@ def test_control_room_websocket_handshake():
 
 def test_control_room_websocket_ping_pong():
     """Verifies that sending PING frame over WebSocket returns PONG."""
+    token = get_test_token()
     with TestClient(app) as test_client:
-        with test_client.websocket_connect("/api/v1/ws/control-room") as ws:
+        with test_client.websocket_connect(f"/api/v1/ws/control-room?token={token}") as ws:
             # Consume initial handshake
             ws.receive_json()
 
@@ -47,8 +62,9 @@ def test_control_room_websocket_ping_pong():
 
 def test_control_room_websocket_broadcast_delivery():
     """Verifies that multicast messages broadcasted via ws_manager reach active WebSocket clients."""
+    token = get_test_token()
     with TestClient(app) as test_client:
-        with test_client.websocket_connect("/api/v1/ws/control-room") as ws:
+        with test_client.websocket_connect(f"/api/v1/ws/control-room?token={token}") as ws:
             # Consume handshake
             ws.receive_json()
 

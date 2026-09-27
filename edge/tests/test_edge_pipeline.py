@@ -315,3 +315,29 @@ class TestEndToEndEdgePipeline:
         assert service.turnstile_relay.led_state == "RED_ALARM"
 
         service.stop()
+
+    def test_egress_direction_always_grants_passage(self):
+        """Under statutory safety regulations, workers exiting the pithead (EGRESS) must NEVER be trapped underground, even if PPE is missing."""
+        service = EdgeTurnstileService(simulation_mode=True, ppe_scenario="MISSING_HARDHAT", direction="EGRESS")
+        service.start()
+
+        service.backend_client.check_worker_eligibility = MagicMock(return_value={
+            "eligible": True,
+            "worker_name": "Ramesh Egress",
+            "reason": "Exiting pithead",
+        })
+        service.backend_client.send_access_event = MagicMock(return_value={
+            "status": "logged",
+            "access_log_id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a99",
+            "violation_ticket_created": False,
+        })
+
+        result = service.handle_badge_scan("RFID-MINER-0099")
+
+        assert result["gate_actuated"] is True
+        assert result["direction"] == "EGRESS"
+        assert service.turnstile_relay.is_unlocked is True
+        assert service.turnstile_relay.led_state == "GREEN"
+
+        service.stop()
+

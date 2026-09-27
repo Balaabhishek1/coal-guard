@@ -18,7 +18,9 @@ from app.worker.ocr_worker import execute_document_ocr
 
 
 @pytest.mark.asyncio
-async def test_document_upload_and_extraction(client: AsyncClient, db_session: AsyncSession):
+async def test_document_upload_and_extraction(
+    client: AsyncClient, db_session: AsyncSession, auth_headers: dict
+):
     """Verifies document upload and statutory metadata extraction."""
     sample_certificate_text = (
         "DIRECTORATE GENERAL OF MINES SAFETY (DGMS)\n"
@@ -39,7 +41,12 @@ async def test_document_upload_and_extraction(client: AsyncClient, db_session: A
     }
 
     # 1. Upload Document
-    response = await client.post("/api/v1/documents/upload", files=files, data=data)
+    response = await client.post(
+        "/api/v1/documents/upload",
+        files=files,
+        data=data,
+        headers=auth_headers["safety_officer"],
+    )
     assert response.status_code == 202
     resp_data = response.json()
     assert "certificate_id" in resp_data
@@ -57,7 +64,10 @@ async def test_document_upload_and_extraction(client: AsyncClient, db_session: A
         await execute_document_ocr(cert_id, cert.file_url, db_session)
 
     # 3. Fetch OCR extraction results via API
-    get_res = await client.get(f"/api/v1/documents/{cert_id}")
+    get_res = await client.get(
+        f"/api/v1/documents/{cert_id}",
+        headers=auth_headers["safety_officer"],
+    )
     assert get_res.status_code == 200
     doc_data = get_res.json()
 
@@ -70,10 +80,36 @@ async def test_document_upload_and_extraction(client: AsyncClient, db_session: A
 
 
 @pytest.mark.asyncio
+async def test_unauthenticated_document_upload_denied(client: AsyncClient):
+    """Verifies that uploading a document without authentication is denied with HTTP 401."""
+    files = {
+        "file": ("test.pdf", io.BytesIO(b"%PDF-dummy"), "application/pdf"),
+    }
+    res = await client.post("/api/v1/documents/upload", files=files)
+    assert res.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_unsupported_file_extension_rejected(client: AsyncClient, auth_headers: dict):
+    """Verifies that uploading unauthorized executable extensions (.exe, .sh) is rejected with HTTP 400."""
+    files = {
+        "file": ("malicious_payload.exe", io.BytesIO(b"MZ\x90\x00"), "application/x-dosexec"),
+    }
+    res = await client.post(
+        "/api/v1/documents/upload",
+        files=files,
+        headers=auth_headers["safety_officer"],
+    )
+    assert res.status_code == 400
+    assert "Unsupported file format" in res.json()["detail"]
+
+
+@pytest.mark.asyncio
 async def test_document_ocr_auto_updates_worker_credential(
     client: AsyncClient,
     db_session: AsyncSession,
     seed_data: dict,
+    auth_headers: dict,
 ):
     """Verifies that processing a PME document auto-updates the associated miner's medical expiry."""
     expired_pme_miner = seed_data["expired_pme_miner"]
@@ -98,7 +134,12 @@ async def test_document_ocr_auto_updates_worker_credential(
     }
 
     # Upload
-    upload_res = await client.post("/api/v1/documents/upload", files=files, data=data)
+    upload_res = await client.post(
+        "/api/v1/documents/upload",
+        files=files,
+        data=data,
+        headers=auth_headers["safety_officer"],
+    )
     assert upload_res.status_code == 202
     cert_id = uuid.UUID(upload_res.json()["certificate_id"])
 
@@ -118,7 +159,9 @@ async def test_document_ocr_auto_updates_worker_credential(
 
 
 @pytest.mark.asyncio
-async def test_document_human_verification(client: AsyncClient, db_session: AsyncSession):
+async def test_document_human_verification(
+    client: AsyncClient, db_session: AsyncSession, auth_headers: dict
+):
     """Verifies human-in-the-loop statutory verification and metadata corrections."""
     cert = DigitizedCertificate(
         id=uuid.uuid4(),
@@ -138,7 +181,11 @@ async def test_document_human_verification(client: AsyncClient, db_session: Asyn
         "notes": "Verified by Safety Officer Sunil Verma",
     }
 
-    verify_res = await client.post(f"/api/v1/documents/{cert.id}/verify", json=verify_payload)
+    verify_res = await client.post(
+        f"/api/v1/documents/{cert.id}/verify",
+        json=verify_payload,
+        headers=auth_headers["safety_officer"],
+    )
     assert verify_res.status_code == 200
     res_data = verify_res.json()
 
@@ -148,7 +195,33 @@ async def test_document_human_verification(client: AsyncClient, db_session: Asyn
 
 
 @pytest.mark.asyncio
-async def test_list_documents_filtering(client: AsyncClient, db_session: AsyncSession):
+async def test_miner_cannot_verify_document_rbac(
+    client: AsyncClient, db_session: AsyncSession, auth_headers: dict
+):
+    """Verifies that non-safety/management roles (e.g. Miner) cannot verify documents (HTTP 403)."""
+    cert = DigitizedCertificate(
+        id=uuid.uuid4(),
+        document_type=DocumentType.OTHER.value,
+        extracted_serial_no="PROBE-001",
+        file_url="uploads/documents/probe.txt",
+        processing_status=ProcessingStatus.COMPLETED.value,
+        is_verified_by_human=False,
+    )
+    db_session.add(cert)
+    await db_session.commit()
+
+    verify_res = await client.post(
+        f"/api/v1/documents/{cert.id}/verify",
+        json={"is_verified": True},
+        headers=auth_headers["miner"],
+    )
+    assert verify_res.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_list_documents_filtering(
+    client: AsyncClient, db_session: AsyncSession, auth_headers: dict
+):
     """Verifies querying and filtering digitized documents list."""
     cert1 = DigitizedCertificate(
         id=uuid.uuid4(),
@@ -168,21 +241,32 @@ async def test_list_documents_filtering(client: AsyncClient, db_session: AsyncSe
     await db_session.commit()
 
     # Filter by document_type
-    res_vtc = await client.get("/api/v1/documents", params={"document_type": DocumentType.VTC_SLIP.value})
+    res_vtc = await client.get(
+        "/api/v1/documents",
+        params={"document_type": DocumentType.VTC_SLIP.value},
+        headers=auth_headers["safety_officer"],
+    )
     assert res_vtc.status_code == 200
     items_vtc = res_vtc.json()
     assert all(i["document_type"] == DocumentType.VTC_SLIP.value for i in items_vtc)
 
     # Filter by verified
-    res_ver = await client.get("/api/v1/documents", params={"is_verified": True})
+    res_ver = await client.get(
+        "/api/v1/documents",
+        params={"is_verified": True},
+        headers=auth_headers["safety_officer"],
+    )
     assert res_ver.status_code == 200
     items_ver = res_ver.json()
     assert all(i["is_verified_by_human"] is True for i in items_ver)
 
 
 @pytest.mark.asyncio
-async def test_get_nonexistent_document_404(client: AsyncClient):
+async def test_get_nonexistent_document_404(client: AsyncClient, auth_headers: dict):
     """Verifies that requesting an unknown document ID returns 404."""
     random_id = uuid.uuid4()
-    res = await client.get(f"/api/v1/documents/{random_id}")
+    res = await client.get(
+        f"/api/v1/documents/{random_id}",
+        headers=auth_headers["safety_officer"],
+    )
     assert res.status_code == 404

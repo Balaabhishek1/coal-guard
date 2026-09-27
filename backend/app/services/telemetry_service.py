@@ -77,7 +77,16 @@ class TelemetryService:
         ]
 
         if insert_rows:
-            bulk_stmt = insert(SensorTelemetry).values(insert_rows)
+            bind = db.get_bind()
+            dialect_name = getattr(bind.dialect, "name", "") if bind else ""
+            if dialect_name == "postgresql":
+                from sqlalchemy.dialects.postgresql import insert as pg_insert
+                bulk_stmt = pg_insert(SensorTelemetry).values(insert_rows).on_conflict_do_nothing()
+            elif dialect_name == "sqlite":
+                from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+                bulk_stmt = sqlite_insert(SensorTelemetry).values(insert_rows).on_conflict_do_nothing()
+            else:
+                bulk_stmt = insert(SensorTelemetry).values(insert_rows)
             await db.execute(bulk_stmt)
 
         await db.commit()

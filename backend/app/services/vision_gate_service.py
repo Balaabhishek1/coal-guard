@@ -24,6 +24,7 @@ from app.models.user import User
 from app.schemas.governance import SeverityEnum, ViolationCreate
 from app.schemas.vision_edge import AccessAttemptResponse, EdgeAccessEventPayload
 from app.services.audit_service import HashChainService
+from app.services.eligibility_service import EligibilityService
 from app.services.violation_service import ViolationService
 
 logger = logging.getLogger("coalguard.vision_gate")
@@ -59,15 +60,27 @@ class VisionGateService:
         worker_name: str = user.full_name if user else "UNREGISTERED_WORKER"
 
         now = datetime.now(timezone.utc)
+        is_egress = (payload.direction.upper() == "EGRESS")
+
+        # Egress Safety Guarantee: miners resurfacing from underground must NEVER be locked in
+        effective_gate_actuated = True if is_egress else payload.gate_actuated
+
+        if is_egress:
+            # Conclude shift when miner returns to surface
+            await EligibilityService.record_shift_end(db, rfid_tag=payload.rfid_tag)
+        elif effective_gate_actuated and payload.credential_eligibility and payload.optical_compliance:
+            # Commence active shift when miner passes turnstile for underground descent
+            await EligibilityService.record_shift_start(db, rfid_tag=payload.rfid_tag)
 
         # 3. Persist record in access_attempt_logs
         log_entry = AccessAttemptLog(
             user_id=user_id,
             rfid_tag=payload.rfid_tag,
             location_id=payload.location_id,
+            direction=payload.direction.upper(),
             optical_compliance=payload.optical_compliance,
             credential_eligibility=payload.credential_eligibility,
-            gate_actuated=payload.gate_actuated,
+            gate_actuated=effective_gate_actuated,
             wear_states=payload.wear_states.model_dump(),
             snapshot_crop_url=payload.snapshot_crop_url,
             timestamp=now,
@@ -80,8 +93,8 @@ class VisionGateService:
         violation_id: Optional[uuid.UUID] = None
 
         # 4. Automated Statutory Compliance Violation Ticketing
-        # Interlock Condition: optical compliance failure OR physical gate denied/held locked
-        if not payload.optical_compliance or not payload.gate_actuated:
+        # Interlock Condition: only enforce denial ticketing on INGRESS
+        if not is_egress and (not payload.optical_compliance or not effective_gate_actuated):
             wear_dict = payload.wear_states.model_dump()
             missing_ppe = [gear.replace("_worn", "").upper() for gear, worn in wear_dict.items() if not worn]
 
@@ -98,7 +111,7 @@ class VisionGateService:
                 description = (
                     f"Turnstile optical vision gate detected missing safety equipment ({missing_str}) "
                     f"for worker '{worker_name}' (Tag: {payload.rfid_tag}) at {location.location_name}. "
-                    f"Gate actuated: {payload.gate_actuated}."
+                    f"Gate actuated: {effective_gate_actuated}."
                 )
             else:
                 # Optical check passed, but gate held locked due to credential or shift breach
@@ -140,12 +153,13 @@ class VisionGateService:
             payload={
                 "access_log_id": str(log_entry.id),
                 "rfid_tag": payload.rfid_tag,
+                "direction": payload.direction.upper(),
                 "worker_name": worker_name,
                 "location_id": str(payload.location_id),
                 "location_name": location.location_name,
                 "optical_compliance": payload.optical_compliance,
                 "credential_eligibility": payload.credential_eligibility,
-                "gate_actuated": payload.gate_actuated,
+                "gate_actuated": effective_gate_actuated,
                 "violation_created": violation_created,
                 "violation_id": str(violation_id) if violation_id else None,
                 "wear_states": payload.wear_states.model_dump(),
@@ -160,12 +174,13 @@ class VisionGateService:
             "data": {
                 "access_log_id": str(log_entry.id),
                 "rfid_tag": payload.rfid_tag,
+                "direction": payload.direction.upper(),
                 "worker_name": worker_name,
                 "location_id": str(payload.location_id),
                 "location_name": location.location_name,
                 "optical_compliance": payload.optical_compliance,
                 "credential_eligibility": payload.credential_eligibility,
-                "gate_actuated": payload.gate_actuated,
+                "gate_actuated": effective_gate_actuated,
                 "wear_states": payload.wear_states.model_dump(),
                 "snapshot_crop_url": payload.snapshot_crop_url,
                 "violation_ticket_created": violation_created,

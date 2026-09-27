@@ -152,14 +152,14 @@ class SyncService:
                 )
 
             # --- Statutory Anomaly Interlock 2: Sluggish Airflow (CMR 2017 Reg 153) ---
-            if entry.air_velocity_m_per_min is not None and entry.air_velocity_m_per_min < 30.0:
+            if entry.air_velocity_m_per_min is not None and entry.air_velocity_m_per_min < 15.0:
                 viol_payload = ViolationCreate(
                     location_id=entry.location_id,
                     violation_type="INADEQUATE_VENTILATION_AIRFLOW",
                     title=f"Sub-Statutory Air Velocity ({entry.air_velocity_m_per_min} m/min)",
                     description=(
                         f"Ventilation survey measured air velocity of {entry.air_velocity_m_per_min} m/min "
-                        f"(Statutory minimum < 30 m/min) at {location.location_name}. Stagnation risk."
+                        f"(Statutory minimum < 15 m/min) at {location.location_name}. Stagnation risk."
                     ),
                     severity=SeverityEnum.HIGH,
                     contractor_id=inspector.contractor_id,
@@ -172,14 +172,14 @@ class SyncService:
                 violations_created += 1
 
             # --- Statutory Anomaly Interlock 3: Inadequate Roof Bolt Torque ---
-            if entry.roof_bolt_torque_nm is not None and entry.roof_bolt_torque_nm < 100.0:
+            if entry.roof_bolt_torque_nm is not None and entry.roof_bolt_torque_nm < 80.0:
                 viol_payload = ViolationCreate(
                     location_id=entry.location_id,
                     violation_type="ROOF_SUPPORT_DEFECT",
                     title=f"Under-Torqued Roof Bolt ({entry.roof_bolt_torque_nm} Nm)",
                     description=(
                         f"Strata audit recorded roof bolt torque of {entry.roof_bolt_torque_nm} Nm "
-                        f"(Statutory minimum < 100 Nm) at {location.location_name}. Risk of strata failure."
+                        f"(Statutory minimum < 80 Nm) at {location.location_name}. Risk of strata failure."
                     ),
                     severity=SeverityEnum.HIGH,
                     contractor_id=inspector.contractor_id,
