@@ -24,10 +24,11 @@ jobs:
           POSTGRES_DB: coalguard_test
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
+          PATRONI_SUPERUSER_PASSWORD: postgres
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U postgres"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 5
@@ -78,8 +79,15 @@ jobs:
 
       - name: Run Database Migrations
         env:
+          PGPASSWORD: postgres
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/coalguard_test
         run: |
+          for i in {1..30}; do
+            pg_isready -h localhost -p 5432 -U postgres && break
+            echo "Waiting for PostgreSQL service..."
+            sleep 1
+          done
+          psql -h localhost -U postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'coalguard_test'" | grep -q 1 || psql -h localhost -U postgres -c "CREATE DATABASE coalguard_test;"
           cd backend
           alembic upgrade head
 

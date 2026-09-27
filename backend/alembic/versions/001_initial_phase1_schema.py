@@ -25,10 +25,18 @@ def upgrade() -> None:
 
     if dialect_name == "postgresql":
         op.execute("CREATE EXTENSION IF NOT EXISTS postgis;")
-        try:
-            op.execute("CREATE EXTENSION IF NOT EXISTS timescaledb;")
-        except Exception:
-            pass  # Allow setup if timescaledb binary is absent on standard vanilla postgres
+        op.execute(
+            """
+            DO $$
+            BEGIN
+                BEGIN
+                    CREATE EXTENSION IF NOT EXISTS timescaledb;
+                EXCEPTION WHEN OTHERS THEN
+                    RAISE NOTICE 'Skipping timescaledb extension: %', SQLERRM;
+                END;
+            END $$;
+            """
+        )
         op.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto;")
 
     # 2. Contractors Table
