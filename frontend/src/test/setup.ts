@@ -38,3 +38,18 @@ class IntersectionObserverMock {
 }
 (globalThis as any).IntersectionObserver = IntersectionObserverMock;
 window.IntersectionObserver = IntersectionObserverMock as any;
+
+// Polyfill requestAnimationFrame and cancelAnimationFrame for headless jsdom testing
+if (!globalThis.requestAnimationFrame) {
+  (globalThis as any).requestAnimationFrame = (callback: FrameRequestCallback) => {
+    return setTimeout(() => callback(Date.now()), 16) as unknown as number;
+  };
+}
+if (!globalThis.cancelAnimationFrame) {
+  (globalThis as any).cancelAnimationFrame = (id: number) => {
+    clearTimeout(id);
+  };
+}
+
+// Polyfill window.scrollTo for headless jsdom testing
+window.scrollTo = vi.fn();

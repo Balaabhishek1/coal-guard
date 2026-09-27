@@ -25,7 +25,7 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
         ports:
-          - 5432:5432
+          - 5433:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 5s
@@ -55,6 +55,7 @@ jobs:
 
       - name: Install System Dependencies
         run: |
+          sudo systemctl stop postgresql || true
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             libgl1 \
@@ -78,14 +79,14 @@ jobs:
 
       - name: Run Database Migrations
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/coalguard_test
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5433/coalguard_test
         run: |
           cd backend
           alembic upgrade head
 
       - name: Execute Automated Test Suite (Pytest)
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/coalguard_test
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5433/coalguard_test
           REDIS_URL: redis://localhost:6379/0
           CELERY_BROKER_URL: redis://localhost:6379/1
           CELERY_RESULT_BACKEND: redis://localhost:6379/2
