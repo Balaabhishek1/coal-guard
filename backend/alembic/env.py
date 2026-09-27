@@ -62,8 +62,10 @@ def do_run_migrations(connection: Connection) -> None:
 
 async def run_async_migrations() -> None:
     """Creates an AsyncEngine and associates a connection with the context."""
+    section = config.get_section(config.config_ini_section, {})
+    section["sqlalchemy.url"] = database_url
     connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        section,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )

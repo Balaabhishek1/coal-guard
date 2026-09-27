@@ -27,6 +27,7 @@ class ResizeObserverMock {
   unobserve = vi.fn();
   disconnect = vi.fn();
 }
+(globalThis as any).ResizeObserver = ResizeObserverMock;
 window.ResizeObserver = ResizeObserverMock as any;
 
 // Polyfill IntersectionObserver for headless jsdom testing
@@ -35,4 +36,5 @@ class IntersectionObserverMock {
   unobserve = vi.fn();
   disconnect = vi.fn();
 }
+(globalThis as any).IntersectionObserver = IntersectionObserverMock;
 window.IntersectionObserver = IntersectionObserverMock as any;
